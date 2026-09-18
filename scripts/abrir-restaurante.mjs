@@ -314,7 +314,7 @@ for (const [i, secao] of (dados.cardapio ?? []).entries()) {
 
 // ---------------------------------------------------------------------------
 
-const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+const site = process.env.NEXT_PUBLIC_URL_DO_SITE ?? "http://localhost:3000"
 
 console.log(`\n${loja.name} está cadastrado.\n`)
 console.log(`  endereço público   ${site}/restaurante/${loja.slug}`)
