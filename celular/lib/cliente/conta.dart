@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../ambiente.dart';
+import '../dados/supabase.dart';
 import '../comum/widgets.dart';
 import '../main.dart';
 import '../sessao.dart';
@@ -122,6 +123,15 @@ class TelaConta extends StatelessWidget {
                             style: TextStyle(color: Cores.perigo)),
                         onTap: () => sessao.sair(),
                       ),
+                      ListTile(
+                        leading: const Icon(Icons.delete_forever_outlined,
+                            color: Cores.textoSuave),
+                        title: const Text('Apagar minha conta',
+                            style: TextStyle(color: Cores.textoSuave)),
+                        subtitle: const Text('Isso não tem volta',
+                            style: TextStyle(fontSize: 12)),
+                        onTap: () => _apagarConta(context, sessao),
+                      ),
                       const SizedBox(height: 24),
                       Center(
                         child: Text(Ambiente.nomeDaMarca,
@@ -135,4 +145,53 @@ class TelaConta extends StatelessWidget {
           );
         },
       );
+}
+
+/// Pergunta, e só então apaga.
+///
+/// Duas frases antes do botão vermelho: o que sai e o que fica. A segunda é a
+/// que evita a pergunta seguinte — "e o pedido que eu já paguei?". O pedido
+/// fica, sem apontar para ninguém: ele é a venda de um restaurante, que tem
+/// obrigação fiscal sobre ela.
+Future<void> _apagarConta(BuildContext context, Sessao sessao) async {
+  final confirmou = await showDialog<bool>(
+    context: context,
+    builder: (dialogo) => AlertDialog(
+      title: const Text('Apagar sua conta?'),
+      content: const Text(
+        'Somem o seu acesso, o seu cadastro e os seus endereços. Não dá para '
+        'desfazer.\n\n'
+        'Os pedidos que você já fez continuam no registro de vendas dos '
+        'restaurantes, sem o seu nome e sem o seu contato.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogo).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogo).pop(true),
+          style: TextButton.styleFrom(foregroundColor: Cores.perigo),
+          child: const Text('Apagar'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmou != true || !context.mounted) return;
+
+  try {
+    await sessao.apagarConta();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Conta apagada.')),
+    );
+  } on ErroDeDados catch (e) {
+    // O banco recusa por motivo que a pessoa resolve: pedido em andamento,
+    // conta de loja, conta de entregador. A mensagem dele já explica o quê.
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e.mensagem)),
+    );
+  }
 }

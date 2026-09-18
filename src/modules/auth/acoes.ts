@@ -172,3 +172,26 @@ export async function definirNovaSenha(
   revalidatePath("/", "layout")
   return { ok: true, mensagem: "Senha alterada. Voce ja pode entrar com ela." }
 }
+
+/**
+ * Apaga a conta de quem esta conectado.
+ *
+ * O caminho e exigido pela Play Store — aplicativo que deixa criar conta tem
+ * de deixar apagar, por dentro e por uma pagina publica — e pela LGPD. Quem
+ * decide o que pode sair e o BANCO: `apagar_minha_conta` recusa dono de loja,
+ * entregador e quem tem pedido em andamento, e anonimiza os pedidos antigos em
+ * vez de apaga-los, porque a venda e do restaurante.
+ *
+ * Aqui em cima sobra o resto: derrubar a sessao, que senao fica um cookie
+ * apontando para um usuario que nao existe mais.
+ */
+export async function apagarMinhaConta(): Promise<ResultadoDaAcao> {
+  const supabase = await criarClienteDoServidor()
+
+  const { error } = await supabase.rpc("apagar_minha_conta")
+  if (error) return { ok: false, erro: error.message }
+
+  await supabase.auth.signOut()
+  revalidatePath("/", "layout")
+  return { ok: true }
+}

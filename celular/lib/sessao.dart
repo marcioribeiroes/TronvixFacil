@@ -213,6 +213,20 @@ class Sessao extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Apaga a conta desta pessoa, de vez.
+  ///
+  /// Existe porque a Play Store exige o caminho dentro do aplicativo — quem
+  /// deixa criar conta tem de deixar apagar — e porque a LGPD pede o mesmo.
+  ///
+  /// Quem decide o que pode sair é o banco: `apagar_minha_conta` recusa dono de
+  /// loja, entregador e quem tem pedido em andamento, e anonimiza os pedidos
+  /// antigos em vez de apagá-los, porque a venda é do restaurante. A recusa
+  /// chega aqui como `ErroDeDados` já em português, e a tela mostra como está.
+  Future<void> apagarConta() async {
+    await executar(() => banco.rpc('apagar_minha_conta'));
+    await sair();
+  }
+
   Future<void> recuperarSenha(String email) =>
       executar(() => autenticacao.resetPasswordForEmail(email.trim()));
 

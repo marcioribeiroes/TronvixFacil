@@ -101,6 +101,17 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
           >
             Coloque no ar
           </Link>
+
+          {/* A politica precisa ser alcancavel de qualquer tela, sem login: e
+              o que a LGPD pede e o que a loja de aplicativos confere. */}
+          <nav className="mt-6 flex gap-4 text-xs text-muted-foreground">
+            <Link className="hover:underline" href="/privacidade">
+              Privacidade
+            </Link>
+            <Link className="hover:underline" href="/excluir-conta">
+              Excluir conta
+            </Link>
+          </nav>
         </div>
       </footer>
 

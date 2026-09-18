@@ -68,7 +68,13 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const caminho = request.nextUrl.pathname
-  const area = AREAS_PROTEGIDAS.find((a) => caminho.startsWith(a.prefixo))
+  // A comparacao e por SEGMENTO, nao por prefixo de texto. "/conta-apagada"
+  // comeca com "/conta" e nao tem nada com a area do cliente: quem chega la
+  // acabou de apagar a conta e nao tem mais sessao — mandar essa pessoa para o
+  // login e dizer que deu errado quando deu certo.
+  const area = AREAS_PROTEGIDAS.find(
+    (a) => caminho === a.prefixo || caminho.startsWith(`${a.prefixo}/`),
+  )
 
   if (area && !user) {
     const destino = request.nextUrl.clone()
