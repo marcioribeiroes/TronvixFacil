@@ -47,7 +47,19 @@ export const SITUACOES_DA_ENTREGA = [
 
 export type SituacaoDaEntrega = (typeof SITUACOES_DA_ENTREGA)[number]
 
-export type TipoDeEntrega = "delivery" | "pickup"
+export type TipoDeEntrega = "delivery" | "pickup" | "dine_in"
+
+/**
+ * Como o pedido chega ao cliente, em palavras.
+ *
+ * "Mesa" e nao "consumo no local": e o que o balcao fala, e a tela tem de
+ * falar a lingua de quem trabalha nela.
+ */
+export const ROTULO_DO_TIPO: Record<TipoDeEntrega, string> = {
+  delivery: "Entrega",
+  pickup: "Retirada",
+  dine_in: "Mesa",
+}
 
 /** Transicoes validas do pedido. Espelho de app.order_transition_allowed. */
 const TRANSICOES_DO_PEDIDO: Record<SituacaoDoPedido, readonly SituacaoDoPedido[]> = {
@@ -84,7 +96,9 @@ export function transicaoDoPedidoPermitida(
   tipo: TipoDeEntrega = "delivery",
 ): boolean {
   if (!TRANSICOES_DO_PEDIDO[de]?.includes(para)) return false
-  // Retirada nao passa pela rua: nao existe "saiu para entrega" no balcao.
+  // So a entrega passa pela rua. Retirada termina no balcao, e mesa termina
+  // quando o garcom poe o prato na frente do cliente - nenhuma das duas tem
+  // "saiu para entrega".
   if (para === "out_for_delivery" && tipo !== "delivery") return false
   return true
 }

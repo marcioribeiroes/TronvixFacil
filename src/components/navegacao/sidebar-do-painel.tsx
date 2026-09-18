@@ -15,6 +15,7 @@ import {
   Package,
   Percent,
   PlusSquare,
+  QrCode,
   Receipt,
   Settings,
   Tag,
@@ -57,6 +58,7 @@ const ICONES = {
   cardapio: UtensilsCrossed,
   produtos: Package,
   adicionais: PlusSquare,
+  mesas: QrCode,
 } as const satisfies Record<string, LucideIcon>
 
 export type NomeDoIcone = keyof typeof ICONES

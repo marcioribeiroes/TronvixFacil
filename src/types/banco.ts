@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 31   Enums: 14   Funcoes: 5
+// Tabelas: 32   Enums: 14   Funcoes: 6
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -933,6 +933,8 @@ export interface Database {
           cancellation_reason: string | null
           created_at: string
           updated_at: string
+          table_id: string | null
+          table_label: string | null
         }
         Insert: {
           id?: string
@@ -966,6 +968,8 @@ export interface Database {
           cancellation_reason?: string | null
           created_at?: string
           updated_at?: string
+          table_id?: string | null
+          table_label?: string | null
         }
         Update: {
           id?: string
@@ -999,6 +1003,8 @@ export interface Database {
           cancellation_reason?: string | null
           created_at?: string
           updated_at?: string
+          table_id?: string | null
+          table_label?: string | null
         }
         Relationships: [
           {
@@ -1027,6 +1033,13 @@ export interface Database {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_tables"
             referencedColumns: ["id"]
           }
         ]
@@ -1517,6 +1530,50 @@ export interface Database {
           }
         ]
       }
+      restaurant_tables: {
+        Row: {
+          id: string
+          restaurant_id: string
+          label: string
+          code: string
+          seats: number | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          label: string
+          code: string
+          seats?: number | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          label?: string
+          code?: string
+          seats?: number | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_tables_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       restaurants: {
         Row: {
           id: string
@@ -1807,6 +1864,14 @@ export interface Database {
         }
         Returns: { id: string; slug: string }[]
       }
+      criar_mesas: {
+        Args: {
+          p_restaurante: string
+          p_quantidade: number
+          p_prefixo?: string
+        }
+        Returns: number
+      }
       fechar_pedido: {
         Args: {
           p_cart_id: string
@@ -1818,6 +1883,7 @@ export interface Database {
           p_coupon_code?: string
           p_notes?: string
           p_scheduled_for?: string
+          p_mesa?: string
         }
         Returns: string
       }
@@ -1850,7 +1916,7 @@ export interface Database {
       courier_status: "pending" | "approved" | "suspended"
       delivery_status: "pending" | "searching_courier" | "assigned" | "heading_to_restaurant" | "picked_up" | "heading_to_customer" | "delivered" | "cancelled"
       discount_type: "percentage" | "fixed" | "free_shipping"
-      fulfillment_type: "delivery" | "pickup"
+      fulfillment_type: "delivery" | "pickup" | "dine_in"
       order_status: "awaiting_payment" | "received" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "cancelled" | "rejected"
       payment_method: "pix" | "credit_card" | "debit_card" | "cash" | "meal_voucher"
       payment_status: "pending" | "paid" | "failed" | "refunded" | "cancelled"

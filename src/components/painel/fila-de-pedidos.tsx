@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Bike, Clock, StickyNote, Store, Wallet } from "lucide-react"
+import { Bike, Clock, StickyNote, Store, Wallet,
+  UtensilsCrossed,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +25,7 @@ export type PedidoDaFila = {
   number: number
   status: string
   fulfillment: string
+  table_label: string | null
   customer_name: string
   customer_phone: string | null
   address_summary: string | null
@@ -260,10 +263,19 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
         <span className="inline-flex items-center gap-1.5">
           {tipo === "delivery" ? (
             <Bike className="size-3.5" aria-hidden="true" />
+          ) : tipo === "dine_in" ? (
+            <UtensilsCrossed className="size-3.5" aria-hidden="true" />
           ) : (
             <Store className="size-3.5" aria-hidden="true" />
           )}
-          {tipo === "delivery" ? "Entrega" : "Retirada"}
+          {/* Na mesa, o destino E a informacao: quem prepara precisa saber para
+              onde o prato vai antes de saber o nome de quem pediu. Por isso o
+              rotulo da mesa vem no lugar da palavra "Mesa". */}
+          {tipo === "delivery"
+            ? "Entrega"
+            : tipo === "dine_in"
+              ? (p.table_label ?? "Mesa")
+              : "Retirada"}
         </span>
         {tipo === "delivery" && p.address_summary ? (
           <span>
@@ -301,7 +313,8 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
           <Wallet className="size-4 text-muted-foreground" aria-hidden="true" />
           {naEntrega ? (
             <>
-              Receber <strong>{formatarReais(p.total_cents)}</strong> em{" "}
+              Receber {tipo === "dine_in" ? "na mesa " : ""}
+              <strong>{formatarReais(p.total_cents)}</strong> em{" "}
               {FORMA[pagamento.method] ?? pagamento.method}
             </>
           ) : (

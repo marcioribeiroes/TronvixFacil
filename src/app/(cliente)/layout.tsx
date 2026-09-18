@@ -5,6 +5,8 @@ import { BarraInferior } from "@/components/navegacao/barra-inferior"
 import { LogoTronvixFacil } from "@/components/marca/logo"
 import { Button } from "@/components/ui/button"
 import { obterContexto } from "@/modules/auth/sessao"
+import { FaixaDaMesa } from "@/components/cliente/faixa-da-mesa"
+import { mesaAtual } from "@/modules/cliente/mesa"
 
 /**
  * Moldura do aplicativo do cliente.
@@ -14,10 +16,17 @@ import { obterContexto } from "@/modules/auth/sessao"
  * desktop a barra some e a navegacao sobe para o cabecalho.
  */
 export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
-  const contexto = await obterContexto()
+  const [contexto, mesa] = await Promise.all([obterContexto(), mesaAtual()])
 
   return (
     <div className="flex min-h-dvh flex-col">
+      {mesa ? (
+        <FaixaDaMesa
+          rotulo={mesa.rotulo}
+          restaurante={mesa.restauranteNome}
+          slug={mesa.restauranteSlug}
+        />
+      ) : null}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
           <Link href="/" className="shrink-0">

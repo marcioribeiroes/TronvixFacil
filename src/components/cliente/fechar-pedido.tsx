@@ -59,6 +59,7 @@ export function FecharPedido({
   itens,
   enderecos,
   formasAceitas,
+  mesa,
 }: {
   loja: {
     id: string
@@ -70,13 +71,22 @@ export function FecharPedido({
   }
   itens: Item[]
   enderecos: { id: string; rotulo: string; resumo: string }[]
-  formasAceitas: string[]
+  /**
+   * Cada forma COM o momento em que se paga. O par importa: o mesmo cartão de
+   * crédito pode ser aceito pelo site e na maquininha, e são duas linhas
+   * diferentes na tela — e dois caminhos diferentes no banco.
+   */
+  formasAceitas: { metodo: Enums<"payment_method">; momento: Enums<"payment_timing"> }[]
+  /** Vem do QR que a pessoa leu ao sentar. Nulo em pedido de fora. */
+  mesa: { codigo: string; rotulo: string } | null
 }) {
   const router = useRouter()
   const [enviando, iniciar] = useTransition()
   const [erro, setErro] = useState<string | null>(null)
 
-  const [tipo, setTipo] = useState<Enums<"fulfillment_type">>("delivery")
+  // Quem leu o QR da mesa ja comeca nela. Obrigar a escolher "mesa" depois de
+  // escanear a mesa seria perguntar o que a pessoa acabou de responder.
+  const [tipo, setTipo] = useState<Enums<"fulfillment_type">>(mesa ? "dine_in" : "delivery")
   const [enderecoId, setEnderecoId] = useState(enderecos[0]?.id ?? "")
   const [observacao, setObservacao] = useState("")
   const [cupom, setCupom] = useState("")
@@ -84,13 +94,16 @@ export function FecharPedido({
   const [desconto, setDesconto] = useState(0)
   const [troco, setTroco] = useState("")
 
-  // Sem forma cadastrada, dinheiro na entrega — o padrão que nunca depende de
-  // integração. E a preferida é uma de porta enquanto o gateway é simulado:
-  // pedido "pago pelo app" nasce aguardando pagamento e nunca chega ao balcão.
-  const formas = formasAceitas.length > 0 ? formasAceitas : ["cash"]
-  const [forma, setForma] = useState<Enums<"payment_method">>(
-    (formas.find((f) => f !== "pix" && f !== "credit_card") ?? formas[0]) as Enums<"payment_method">,
+  // Sem forma cadastrada, dinheiro na hora — o padrão que nunca depende de
+  // integração. E a preferida é uma de "na hora" enquanto o gateway é simulado:
+  // pedido "pago pelo site" nasce aguardando pagamento e nunca chega ao balcão.
+  const formas: { metodo: Enums<"payment_method">; momento: Enums<"payment_timing"> }[] =
+    formasAceitas.length > 0 ? formasAceitas : [{ metodo: "cash", momento: "on_delivery" }]
+
+  const [escolhida, setEscolhida] = useState(
+    formas.find((f) => f.momento === "on_delivery") ?? formas[0],
   )
+  const forma = escolhida.metodo
 
   const subtotal = itens.reduce(
     (soma, i) =>
@@ -101,7 +114,7 @@ export function FecharPedido({
   )
 
   const taxa =
-    tipo === "pickup"
+    tipo !== "delivery"
       ? 0
       : loja.freteGratisAcima !== null && subtotal >= loja.freteGratisAcima
         ? 0
@@ -144,6 +157,8 @@ export function FecharPedido({
         enderecoId,
         cupom: cupomAplicado ?? undefined,
         observacao,
+        mesa: mesa?.codigo,
+        momento: escolhida.momento,
         trocoPara: troco,
       })
       if (r.ok && r.id) router.push(`/pedidos/${r.id}`)
@@ -207,16 +222,24 @@ export function FecharPedido({
 
       <section>
         <h2 className="font-bold">Como você quer receber</h2>
-        <div className="mt-2 flex gap-2">
-          {(["delivery", "pickup"] as const).map((t) => (
-            <Button
-              key={t}
-              variant={tipo === t ? "default" : "outline"}
-              onClick={() => setTipo(t)}
-            >
-              {t === "delivery" ? "Entrega" : "Retirar no balcão"}
-            </Button>
-          ))}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {/* "Mesa" so aparece para quem escaneou uma. Oferecer a opcao a quem
+              esta em casa produziria pedido de salao sem ninguem sentado. */}
+          {(mesa ? (["dine_in", "delivery", "pickup"] as const) : (["delivery", "pickup"] as const)).map(
+            (t) => (
+              <Button
+                key={t}
+                variant={tipo === t ? "default" : "outline"}
+                onClick={() => setTipo(t)}
+              >
+                {t === "delivery"
+                  ? "Entrega"
+                  : t === "pickup"
+                    ? "Retirar no balcão"
+                    : `Servir na ${mesa!.rotulo}`}
+              </Button>
+            ),
+          )}
         </div>
       </section>
 
@@ -258,18 +281,27 @@ export function FecharPedido({
         <h2 className="font-bold">Como pagar</h2>
         <ul className="mt-2 divide-y rounded-xl border bg-card">
           {formas.map((f) => (
-            <li key={f}>
+            <li key={`${f.metodo}-${f.momento}`}>
               <label className="flex cursor-pointer items-center gap-3 p-3">
                 <input
                   type="radio"
                   name="forma"
-                  checked={forma === f}
-                  onChange={() => setForma(f as Enums<"payment_method">)}
+                  checked={escolhida.metodo === f.metodo && escolhida.momento === f.momento}
+                  onChange={() => setEscolhida(f)}
                   className="size-4 accent-marca"
                 />
-                <span className="flex-1">{ROTULO_DA_FORMA[f] ?? f}</span>
+                <span className="flex-1">{ROTULO_DA_FORMA[f.metodo] ?? f.metodo}</span>
+                {/* O momento vem do cadastro da loja, não de adivinhar pelo
+                    método. Cartão de crédito aparecia duas vezes com o mesmo
+                    "pelo site", e as duas linhas eram indistinguíveis. */}
                 <span className="text-sm text-muted-foreground">
-                  {f === "pix" || f === "credit_card" ? "pelo site" : "na entrega"}
+                  {f.momento === "online"
+                    ? "pelo site"
+                    : tipo === "dine_in"
+                      ? "na mesa"
+                      : tipo === "pickup"
+                        ? "no balcão"
+                        : "na entrega"}
                 </span>
               </label>
             </li>
@@ -326,14 +358,24 @@ export function FecharPedido({
           <dt className="text-muted-foreground">Subtotal</dt>
           <dd>{formatarReais(subtotal)}</dd>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-muted-foreground">
-            {tipo === "pickup" ? "Retirada no balcão" : "Entrega"}
-          </dt>
-          <dd className={taxa === 0 ? "font-semibold text-status-pronto" : ""}>
-            {taxa === 0 ? "Grátis" : formatarReais(taxa)}
-          </dd>
-        </div>
+        {/* Quem está sentado na mesa não tem linha de entrega na conta. Dizer
+            "Entrega — Grátis" ali é oferecer um brinde que não existe, e faz o
+            cliente perguntar ao garçom o que é aquilo. */}
+        {tipo === "delivery" ? (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">Entrega</dt>
+            <dd className={taxa === 0 ? "font-semibold text-status-pronto" : ""}>
+              {taxa === 0 ? "Grátis" : formatarReais(taxa)}
+            </dd>
+          </div>
+        ) : (
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">
+              {tipo === "pickup" ? "Retirada no balcão" : `Servir na ${mesa?.rotulo ?? "mesa"}`}
+            </dt>
+            <dd className="font-semibold text-status-pronto">Sem taxa</dd>
+          </div>
+        )}
         {desconto > 0 ? (
           <div className="flex justify-between text-status-pronto">
             <dt>Cupom {cupomAplicado}</dt>

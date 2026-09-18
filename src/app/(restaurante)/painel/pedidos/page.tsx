@@ -29,7 +29,7 @@ export default async function PaginaDePedidos() {
     supabase
       .from("orders")
       .select(
-        "id, number, status, fulfillment, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing)",
+        "id, number, status, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing)",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .in("status", ABERTOS)

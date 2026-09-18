@@ -140,6 +140,10 @@ export async function fecharPedido(dados: {
   cupom?: string
   observacao?: string
   trocoPara?: string
+  /** O código do QR da mesa. Só existe quando a pessoa está no salão. */
+  mesa?: string
+  /** Quando se paga, vindo do cadastro da loja — não de adivinhar pelo método. */
+  momento: Enums<"payment_timing">
 }): Promise<ResultadoDaAcao> {
   const contexto = await exigirUsuario("/carrinho")
   const supabase = await criarClienteDoServidor()
@@ -152,10 +156,11 @@ export async function fecharPedido(dados: {
 
   if (!carrinho) return { ok: false, erro: "Seu carrinho está vazio." }
 
-  // Pix e cartão de crédito são as formas que um gateway processa; o resto se
-  // paga na porta. Enquanto o provedor é simulado, a tela prefere as de porta
-  // — um pedido em "aguardando pagamento" nunca chegaria ao balcão.
-  const noApp = dados.forma === "pix" || dados.forma === "credit_card"
+  // O momento vem do cadastro da loja. Antes era deduzido do método — "pix ou
+  // crédito é online, o resto é na porta" — e isso quebrava o caso real do
+  // cartão de crédito na maquininha: o pedido nascia "aguardando pagamento",
+  // nunca chegava ao balcão, e o cliente ficava esperando comida que ninguém
+  // estava preparando.
 
   const troco = dados.trocoPara?.trim()
     ? Math.round(Number(dados.trocoPara.replace(/[^\d,.-]/g, "").replace(",", ".")) * 100)
@@ -165,12 +170,15 @@ export async function fecharPedido(dados: {
     p_cart_id: carrinho.id,
     p_fulfillment: dados.tipo,
     p_payment_method: dados.forma,
-    p_payment_timing: noApp ? "online" : "on_delivery",
+    p_payment_timing: dados.momento,
     p_address_id: dados.tipo === "delivery" ? (dados.enderecoId ?? undefined) : undefined,
     p_change_for_cents:
       dados.forma === "cash" && troco !== null ? troco : undefined,
     p_coupon_code: dados.cupom?.trim() || undefined,
     p_notes: dados.observacao?.trim() || undefined,
+    // A mesa não vem escolhida numa lista: vem do QR que a pessoa leu. Uma
+    // lista de mesas na tela deixaria qualquer um lançar na mesa do vizinho.
+    p_mesa: dados.tipo === "dine_in" ? (dados.mesa ?? undefined) : undefined,
   })
 
   if (error) return { ok: false, erro: error.message }

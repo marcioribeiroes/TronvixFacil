@@ -5,12 +5,14 @@ import { ShoppingBasket } from "lucide-react"
 import { FecharPedido } from "@/components/cliente/fechar-pedido"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirUsuario } from "@/modules/auth/sessao"
+import { mesaAtual } from "@/modules/cliente/mesa"
 
 export const metadata: Metadata = { title: "Seu pedido" }
 
 export default async function PaginaDoCarrinho() {
   const contexto = await exigirUsuario("/carrinho")
   const supabase = await criarClienteDoServidor()
+  const mesa = await mesaAtual()
 
   const { data: carrinho } = await supabase
     .from("carts")
@@ -47,7 +49,7 @@ export default async function PaginaDoCarrinho() {
       .order("is_default", { ascending: false }),
     supabase
       .from("restaurant_payment_methods")
-      .select("method")
+      .select("method, timing")
       .eq("restaurant_id", carrinho.restaurant_id)
       .eq("is_active", true),
   ])
@@ -61,6 +63,11 @@ export default async function PaginaDoCarrinho() {
 
       <div className="mt-6">
         <FecharPedido
+          mesa={
+            mesa && mesa.restauranteId === loja.id
+              ? { codigo: mesa.codigo, rotulo: mesa.rotulo }
+              : null
+          }
           loja={{
             id: loja.id,
             nome: loja.name,
@@ -90,7 +97,10 @@ export default async function PaginaDoCarrinho() {
             rotulo: e.label,
             resumo: `${e.street}, ${e.number}${e.complement ? ` — ${e.complement}` : ""}, ${e.district}, ${e.city}-${e.state}`,
           }))}
-          formasAceitas={(formas ?? []).map((f) => f.method)}
+          formasAceitas={(formas ?? []).map((f) => ({
+            metodo: f.method,
+            momento: f.timing,
+          }))}
         />
       </div>
     </div>

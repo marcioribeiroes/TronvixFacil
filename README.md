@@ -23,6 +23,35 @@ vitrine de todos os estabelecimentos, e **unique**, o aplicativo de uma loja só
 Marca e cores também vêm de configuração — o mesmo código vira o aplicativo de
 outro restaurante sem tocar em nenhuma tela.
 
+## Delivery e salão, no mesmo sistema
+
+Três jeitos de receber o pedido, e o terceiro é o que quase nenhum concorrente
+faz junto com os outros dois:
+
+| | quem pede | como termina |
+|---|---|---|
+| Entrega | de casa | o entregador leva |
+| Retirada | de casa | o cliente busca |
+| **Mesa** | **sentado no salão** | **o garçom serve** |
+
+No salão, cada mesa ganha um QR Code para imprimir e colar
+(`/painel/mesas` → *Imprimir os QR Codes*). O cliente aponta a câmera, vê o
+cardápio, pede e paga pelo próprio celular; o pedido cai na fila da cozinha com
+o nome da mesa. Sem garçom anotando, sem comanda de papel.
+
+O QR não leva o número da mesa: leva um código sorteado. Número de mesa é
+adivinhável, e "pedido para a mesa 7" feito de casa às duas da manhã é uma
+brincadeira que o restaurante paga.
+
+Duas regras deixam de valer na mesa, e por um motivo: **pedido mínimo** existe
+para a entrega valer a pena — quem já está sentado e pede uma água não deve
+ouvir "o mínimo é vinte reais" —, e **agendamento** não faz sentido para quem
+está na mesa agora. A **taxa de entrega** é zero, e disso o banco cuida sozinho
+(`orders_no_fee_off_street`).
+
+Não há entidade "comanda". Uma mesa acumula vários pedidos — entrada, bebida,
+sobremesa — e a conta é a soma deles, mostrada em `/painel/mesas`.
+
 E o sistema **não gerencia a entrega**: o entregador é do estabelecimento, que o
 aprova e despacha as próprias corridas. Durante a corrida o cliente acompanha a
 moto no mapa — por uma função que devolve só a posição, nunca a linha do

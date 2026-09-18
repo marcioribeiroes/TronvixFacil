@@ -74,7 +74,7 @@ describe("maquina de estados do pedido", () => {
     // O painel desenha os botoes a partir daqui; tudo que aparecer tem de
     // passar na mesma checagem que a escrita vai enfrentar.
     for (const situacao of SITUACOES_DO_PEDIDO) {
-      for (const tipo of ["delivery", "pickup"] as const) {
+      for (const tipo of ["delivery", "pickup", "dine_in"] as const) {
         for (const proxima of proximasSituacoesDoPedido(situacao, tipo)) {
           expect(transicaoDoPedidoPermitida(situacao, proxima, tipo)).toBe(true)
         }
@@ -142,5 +142,26 @@ describe("maquina de estados da entrega", () => {
       expect(transicaoDaEntregaPermitida("delivered", destino)).toBe(false)
       expect(transicaoDaEntregaPermitida("cancelled", destino)).toBe(false)
     }
+  })
+})
+
+describe("pedido na mesa", () => {
+  it("não sai para entrega: o garçom leva até a mesa", () => {
+    expect(transicaoDoPedidoPermitida("ready", "out_for_delivery", "dine_in")).toBe(false)
+  })
+
+  it("de pronto vai direto a servido", () => {
+    expect(transicaoDoPedidoPermitida("ready", "delivered", "dine_in")).toBe(true)
+  })
+
+  it("a interface não oferece a rua para quem está sentado", () => {
+    expect(proximasSituacoesDoPedido("ready", "dine_in")).not.toContain("out_for_delivery")
+    expect(proximasSituacoesDoPedido("ready", "dine_in")).toContain("delivered")
+  })
+
+  it("o caminho até a mesa é o mesmo da cozinha", () => {
+    expect(transicaoDoPedidoPermitida("received", "confirmed", "dine_in")).toBe(true)
+    expect(transicaoDoPedidoPermitida("confirmed", "preparing", "dine_in")).toBe(true)
+    expect(transicaoDoPedidoPermitida("preparing", "ready", "dine_in")).toBe(true)
   })
 })

@@ -18,6 +18,7 @@ const MENU_DA_GESTAO: ItemDeMenu[] = [
   { rotulo: "Categorias", href: "/painel/categorias", icone: "categorias" },
   { rotulo: "Produtos", href: "/painel/produtos", icone: "produtos" },
   { rotulo: "Adicionais", href: "/painel/adicionais", icone: "adicionais" },
+  { rotulo: "Mesas", href: "/painel/mesas", icone: "mesas" },
   { rotulo: "Promoções", href: "/painel/promocoes", icone: "cupons" },
   { rotulo: "Clientes", href: "/painel/clientes", icone: "usuarios" },
   { rotulo: "Entregas", href: "/painel/entregas", icone: "entregadores" },
@@ -31,7 +32,9 @@ const MENU_DA_GESTAO: ItemDeMenu[] = [
  * sim nao oferecer botao que a pessoa nao pode usar.
  */
 const MENU_DO_ATENDENTE: ItemDeMenu[] = MENU_DA_GESTAO.filter((item) =>
-  ["/painel", "/painel/pedidos", "/painel/cardapio", "/painel/entregas"].includes(item.href),
+  ["/painel", "/painel/pedidos", "/painel/cardapio", "/painel/entregas", "/painel/mesas"].includes(
+    item.href,
+  ),
 )
 
 export default async function LayoutDoPainel({ children }: LayoutProps<"/painel">) {
@@ -39,7 +42,8 @@ export default async function LayoutDoPainel({ children }: LayoutProps<"/painel"
   const ehGestao = vinculo.cargo === "owner" || vinculo.cargo === "manager"
 
   return (
-    <div className="flex min-h-dvh bg-muted/40">
+    <div className="flex min-h-dvh bg-muted/40 print:block print:bg-white">
+      <div className="contents print:hidden">
       <SidebarDoPainel
         itens={ehGestao ? MENU_DA_GESTAO : MENU_DO_ATENDENTE}
         legenda="Painel do Restaurante"
@@ -56,13 +60,16 @@ export default async function LayoutDoPainel({ children }: LayoutProps<"/painel"
           </div>
         }
       />
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <CabecalhoDoPainel
-          titulo={vinculo.nome}
-          nomeDoUsuario={contexto.perfil.full_name || contexto.email || ""}
-        />
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <div className="print:hidden">
+          <CabecalhoDoPainel
+            titulo={vinculo.nome}
+            nomeDoUsuario={contexto.perfil.full_name || contexto.email || ""}
+          />
+        </div>
+        <main className="flex-1 p-4 md:p-6 print:p-0">{children}</main>
       </div>
     </div>
   )
