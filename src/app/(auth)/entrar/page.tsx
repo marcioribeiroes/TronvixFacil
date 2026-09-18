@@ -23,12 +23,23 @@ export default async function PaginaDeLogin({ searchParams }: PageProps<"/entrar
 
       {supabaseConfigurado() ? <FormularioDeLogin voltarPara={voltarPara} /> : <AvisoDeConfiguracao />}
 
-      <p className="text-center text-sm text-muted-foreground">
-        Ainda não tem conta?{" "}
-        <Link href="/criar-conta" className="font-semibold text-marca hover:underline">
-          Cadastre-se
-        </Link>
-      </p>
+      <div className="space-y-3 text-center text-sm text-muted-foreground">
+        <p>
+          Ainda não tem conta?{" "}
+          <Link href="/criar-conta" className="font-semibold text-marca hover:underline">
+            Cadastre-se
+          </Link>
+        </p>
+        <p className="border-t pt-3">
+          Tem um restaurante?{" "}
+          <Link
+            href="/cadastrar-restaurante"
+            className="font-semibold text-marca hover:underline"
+          >
+            Coloque no ar
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }

@@ -76,6 +76,25 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-4 md:pb-10">{children}</main>
 
+      {/* O convite ao restaurante mora no rodape da vitrine, e nao no
+          cabecalho: quem abre esta tela veio para pedir comida. Mas o dono de
+          restaurante tambem pede comida, e e aqui que ele descobre que da para
+          vender por aqui. */}
+      <footer className="border-t bg-muted/40">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-1 px-4 py-8 pb-28 text-center md:pb-8">
+          <p className="text-sm font-semibold">Tem um restaurante?</p>
+          <p className="text-xs text-muted-foreground">
+            Sem mensalidade, com seus próprios entregadores.
+          </p>
+          <Link
+            href="/cadastrar-restaurante"
+            className="mt-3 rounded-md border bg-background px-5 py-2 text-sm font-semibold transition-colors hover:bg-muted"
+          >
+            Coloque no ar
+          </Link>
+        </div>
+      </footer>
+
       <BarraInferior />
     </div>
   )

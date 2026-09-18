@@ -88,14 +88,17 @@ cardápio que vier no arquivo, e sorteia a senha do dono — mostrada uma única
 vez. O dono abre a loja no painel quando o cardápio estiver conferido; loja que
 nasce aberta com cardápio pela metade recebe pedido que não consegue atender.
 
-**Hoje este é o único caminho.** Não existe cadastro público de
-estabelecimento: `/criar-conta` cria sempre um cliente, e a RLS de `restaurants`
-só aceita INSERT de administrador da plataforma. A seção "Esperando aprovação"
-em `/admin/restaurantes` é máquina pronta sem porta que a alimente — ela existe
-para o dia em que o dono puder se cadastrar sozinho.
+Este é o caminho de quem já fechou negócio: alguém da plataforma abre a loja
+pelo cliente, com a chave de serviço na mão.
 
-Enquanto esse dia não chega, quem fecha negócio com um restaurante o cadastra
-por ele, com este script.
+Quem chega sozinho entra por **`/cadastrar-restaurante`** — a loja nasce
+`pending` e a plataforma libera em `/admin/restaurantes`. O dono já entra no
+painel antes da aprovação, para montar o cardápio enquanto espera.
+
+A tabela `restaurants` continua fechada a INSERT: quem escreve nela é a função
+`cadastrar_estabelecimento`, e é lá dentro que mora a regra de que a loja nasce
+esperando, fechada e com a comissão padrão. Fosse um `with check` na política,
+cada coluna nova da tabela viraria uma chance de esquecer uma proibição.
 
 `demo:limpar` só apaga o que tem a marca da semente: estabelecimentos cujo id
 começa com `a0000000-0000-4000-8000-` (cadastro real nunca cai aí, o banco gera

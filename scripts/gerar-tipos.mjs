@@ -70,14 +70,45 @@ select json_build_object(
     -- parametros como undefined e o TypeScript recusa a chamada inteira.
     select json_agg(json_build_object(
       'nome', p.proname,
+      -- proargnames indexa TODOS os argumentos (entrada e saida), enquanto
+      -- proargtypes so tem os de entrada. Numa funcao "returns table", os dois
+      -- desalinham e unnest preenche o resto com nulo - foi assim que o
+      -- gerador morreu em "Cannot read properties of null". proallargtypes e
+      -- proargmodes sao a leitura correta; para funcoes sem saida nomeada eles
+      -- vem nulos, e o coalesce devolve o caso simples.
       'argumentos', coalesce((
         select json_agg(json_build_object(
+          'nome', x.nome,
+          'tipo', format_type(x.oid, null),
+          'temPadrao', x.ordem > (p.pronargs - p.pronargdefaults)
+        ) order by x.ordem)
+        from (
+          select a.nome, a.oid, row_number() over (order by a.posicao) as ordem
+          from unnest(
+                 p.proargnames,
+                 coalesce(p.proallargtypes, p.proargtypes::oid[]),
+                 coalesce(p.proargmodes,
+                          array_fill('i'::"char",
+                                     array[coalesce(array_length(p.proargnames, 1), 0)]))
+               ) with ordinality as a(nome, oid, modo, posicao)
+          where a.modo in ('i', 'b')
+        ) x
+      ), '[]'::json),
+      -- As colunas de um "returns table". Sem elas o retorno seria "record",
+      -- que o mapa traduz para Json - e quem chama perde os nomes dos campos.
+      'saidas', coalesce((
+        select json_agg(json_build_object(
           'nome', a.nome,
-          'tipo', format_type(a.oid, null),
-          'temPadrao', a.posicao > (p.pronargs - p.pronargdefaults)
+          'tipo', format_type(a.oid, null)
         ) order by a.posicao)
-        from unnest(p.proargnames, p.proargtypes::oid[])
-             with ordinality as a(nome, oid, posicao)
+        from unnest(
+               p.proargnames,
+               coalesce(p.proallargtypes, p.proargtypes::oid[]),
+               coalesce(p.proargmodes,
+                        array_fill('i'::"char",
+                                   array[coalesce(array_length(p.proargnames, 1), 0)]))
+             ) with ordinality as a(nome, oid, modo, posicao)
+        where a.modo in ('o', 't', 'b')
       ), '[]'::json),
       'retorno', format_type(p.prorettype, null),
       'retornaConjunto', p.proretset
@@ -168,6 +199,10 @@ const TIPOS_DE_FUNCAO = {
 }
 
 function tipoDeFuncao(nome, enums) {
+  // Falhar com nome e sobrenome. Um tipo nulo aqui significa que a consulta de
+  // introspeccao leu a funcao errado, e um `unknown` silencioso esconderia isso
+  // ate alguem tropecar no TypeScript semanas depois.
+  if (!nome) throw new Error("Tipo sem nome vindo do catalogo - a consulta de funcoes esta errada.")
   if (enums.has(nome)) return `Database["public"]["Enums"]["${nome}"]`
   if (nome.endsWith("[]")) {
     const base = nome.slice(0, -2).trim()
@@ -233,9 +268,15 @@ function gerar({ enums, tabelas, relacoes, funcoes }) {
             )
             .join("\n")
         : "          [chave: string]: never"
-      const retorno = f.retornaConjunto
-        ? `${tipoDeFuncao(f.retorno, nomesDeEnum)}[]`
-        : tipoDeFuncao(f.retorno, nomesDeEnum)
+      // `returns table (a int, b text)` vira { a: number; b: string }. O
+      // prorettype dessas funcoes e `record`, que sozinho nao diz nada.
+      const base =
+        (f.saidas ?? []).length > 0
+          ? `{ ${f.saidas
+              .map((s) => `${s.nome}: ${tipoDeFuncao(s.tipo, nomesDeEnum)}`)
+              .join("; ")} }`
+          : tipoDeFuncao(f.retorno, nomesDeEnum)
+      const retorno = f.retornaConjunto ? `${base}[]` : base
       return `      ${f.nome}: {\n        Args: {\n${argumentos}\n        }\n        Returns: ${retorno}\n      }`
     })
     .join("\n")
