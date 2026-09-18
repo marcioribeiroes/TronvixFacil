@@ -112,7 +112,7 @@ export default async function PaginaDeRelatorios() {
             biblioteca de gráficos e o peso que ela traz. */}
         <div className="mt-3 flex h-40 items-end gap-1 rounded-xl border bg-card p-4">
           {dias.map(([dia, valor]) => (
-            <div key={dia} className="group relative flex-1" title={`${diaCurto(dia)}: ${formatarReais(valor)}`}>
+            <div key={dia} className="group relative flex h-full flex-1 items-end" title={`${diaCurto(dia)}: ${formatarReais(valor)}`}>
               <div
                 className="w-full rounded-t bg-marca transition-colors group-hover:bg-marca-forte"
                 style={{ height: `${Math.max(2, (valor / pico) * 100)}%` }}

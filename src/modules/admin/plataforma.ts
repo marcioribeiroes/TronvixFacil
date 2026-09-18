@@ -246,3 +246,108 @@ export async function removerBanner(id: string): Promise<ResultadoDaAcao> {
   recarregar("/admin/banners", "/")
   return { ok: true }
 }
+
+// ---------------------------------------------------------------------------
+// Entregadores
+// ---------------------------------------------------------------------------
+
+/**
+ * Aprovar, recusar ou suspender um entregador.
+ *
+ * Entregador so fica disponivel depois de aprovado - `app.courier_serves` le o
+ * status, e a fila de corridas nao mostra nada a quem esta pendente. Aprovar
+ * aqui e o unico caminho; nao ha auto-aprovacao em lugar nenhum.
+ *
+ * Quem tem `restaurant_id` e entregador de uma loja so, e quem aprova e a
+ * propria loja, pela tela de entregas. Esta acao e para os da plataforma.
+ */
+export async function decidirSobreEntregador(
+  id: string,
+  situacao: Enums<"courier_status">,
+): Promise<ResultadoDaAcao> {
+  const admin = await exigirAdminDaPlataforma()
+  const supabase = await criarClienteDoServidor()
+
+  const { error } = await supabase
+    .from("couriers")
+    .update({
+      status: situacao,
+      // Carimbar quem aprovou importa numa disputa: "quem liberou esse
+      // entregador?" precisa de resposta, e nao de memoria.
+      approved_at: situacao === "approved" ? new Date().toISOString() : undefined,
+      approved_by: situacao === "approved" ? admin.id : undefined,
+      // Suspenso nao pode continuar marcado como disponivel, senao a fila
+      // tentaria despachar para ele.
+      availability: situacao === "approved" ? undefined : "offline",
+    })
+    .eq("id", id)
+
+  if (error) return { ok: false, erro: error.message }
+
+  recarregar("/admin/entregadores", "/admin")
+  return { ok: true }
+}
+
+// ---------------------------------------------------------------------------
+// Configuracoes da plataforma
+// ---------------------------------------------------------------------------
+
+/**
+ * A linha unica de platform_settings.
+ *
+ * A tabela tem `id boolean primary key default true` com check `id`: e um
+ * jeito de o proprio banco garantir que so existe uma configuracao. Por isso o
+ * update nao filtra por id - nao ha qual escolher.
+ */
+export async function salvarConfiguracaoDaPlataforma(dados: {
+  nomeDaMarca: string
+  emailDeSuporte: string
+  telefoneDeSuporte: string
+  comissaoPadrao: string
+  taxaDoEntregador: string
+  pedidoMinimo: string
+  aceitaNovosCadastros: boolean
+  emManutencao: boolean
+}): Promise<ResultadoDaAcao> {
+  await exigirAdminDaPlataforma()
+  const supabase = await criarClienteDoServidor()
+
+  const nome = dados.nomeDaMarca.trim()
+  if (nome.length < 2) {
+    return { ok: false, erro: "A marca precisa de um nome.", campo: "nomeDaMarca" }
+  }
+
+  const porcento = Number(dados.comissaoPadrao.replace(",", "."))
+  if (!Number.isFinite(porcento) || porcento < 0 || porcento > 100) {
+    return { ok: false, erro: "A comissão vai de 0 a 100.", campo: "comissaoPadrao" }
+  }
+
+  const taxa = paraCentavos(dados.taxaDoEntregador)
+  if (taxa === null || taxa < 0) {
+    return { ok: false, erro: "Valor inválido.", campo: "taxaDoEntregador" }
+  }
+
+  const minimo = paraCentavos(dados.pedidoMinimo)
+  if (minimo === null || minimo < 0) {
+    return { ok: false, erro: "Valor inválido.", campo: "pedidoMinimo" }
+  }
+
+  const { error } = await supabase
+    .from("platform_settings")
+    .update({
+      brand_name: nome,
+      support_email: dados.emailDeSuporte.trim() || null,
+      support_phone: dados.telefoneDeSuporte.trim() || null,
+      default_commission_bps: Math.round(porcento * 100),
+      default_courier_fee_cents: taxa,
+      min_order_cents: minimo,
+      allow_new_signups: dados.aceitaNovosCadastros,
+      maintenance_mode: dados.emManutencao,
+    })
+    .eq("id", true)
+
+  if (error) return { ok: false, erro: error.message }
+
+  recarregar("/admin/configuracoes", "/admin", "/")
+  return { ok: true }
+}
