@@ -33,6 +33,13 @@ flutter build appbundle --release \
 
 Sai em `celular/build/app/outputs/bundle/release/app-release.aab`.
 
+**Suba o código de versão a cada envio.** É a linha `version: 1.0.0+N` do
+`celular/pubspec.yaml`: o `1.0.0` é o que a pessoa vê, o `N` é o que a Play
+conta. Reaproveitar o mesmo `N` em outra faixa faz o Console tratar o pacote
+como herdado e recusar a versão com "Esta versão não adiciona nem remove
+pacotes de apps" — aconteceu ao promover o teste interno para o fechado, e a
+saída foi gerar o `+2`.
+
 **O arquivo tem ~66 MB e isso não é problema.** Cerca de 53 MB são símbolos de
 depuração e o mapa do R8, que a Play usa para ler relatórios de erro e **não**
 envia para o celular de ninguém. O download real fica em torno de **28 MB**.
