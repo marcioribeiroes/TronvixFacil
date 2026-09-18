@@ -29,13 +29,30 @@
 
 default_platform(:android)
 
-AAB = "../build/app/outputs/bundle/release/app-release.aab"
+# Caminho absoluto de propósito. O `fastlane` roda a partir de `android/`, mas
+# este arquivo mora em `android/fastlane/` — e um caminho relativo significava
+# pastas diferentes para a ação e para a conferência, que foi como o upload
+# achou o pacote e a conferência não.
+AAB = File.expand_path("../../build/app/outputs/bundle/release/app-release.aab", __dir__)
 
 platform :android do
   desc "Confere se a chave funciona e diz o que já está publicado"
   lane :conferir do
     versoes = google_play_track_version_codes(track: "internal")
     UI.success("Chave aceita. Versões no teste interno: #{versoes.inspect}")
+  end
+
+  desc "Sobe o pacote para a faixa fechada (Alpha), onde contam os 14 dias"
+  lane :alpha do
+    conferir_o_pacote
+    upload_to_play_store(
+      track: "alpha",
+      aab: AAB,
+      release_status: "completed",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
   end
 
   desc "Sobe o pacote para o teste interno"
@@ -69,7 +86,7 @@ end
 # O pacote precisa existir e ser o de agora. Subir o .aab de três dias atrás,
 # compilado antes da última correção, é um erro silencioso: a Play aceita.
 def conferir_o_pacote
-  caminho = File.expand_path(AAB, __dir__)
+  caminho = AAB
   UI.user_error!("Não achei #{caminho}. Rode o build antes:\n" \
     "  flutter build appbundle --release --dart-define=...") unless File.exist?(caminho)
 
