@@ -1,0 +1,43 @@
+name: tronvix_facil
+description: "Tronvix Fácil — o aplicativo de celular"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  supabase_flutter: ^2.8.0
+  intl: ^0.20.2
+  cupertino_icons: ^1.0.8
+
+  # Mapa por OpenStreetMap, não por Google: o produto é revendido a
+  # restaurantes, e uma chave de API por cliente seria mais uma coisa a
+  # cadastrar — e a cobrar — antes de alguém conseguir entregar um lanche.
+  # Declarado, e não herdado do supabase_flutter: a busca de CEP depende dele
+  # diretamente, e depender de dependência de terceiro quebra no dia em que o
+  # terceiro trocar a dele.
+  http: ^1.2.2
+
+  # Toca os sons do aplicativo. O som em si é gerado por tool/gerar_sons.dart:
+  # nada de arquivo de terceiro, nada de licença a carregar.
+  audioplayers: ^6.1.0
+
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/sons/
