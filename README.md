@@ -15,7 +15,14 @@ Quatro aplicativos, um deploy:
 | Administração | `/admin` | Quem opera a plataforma |
 
 E, no celular, um aplicativo **nativo** em Flutter: [`celular/`](celular/).
-Android e iOS, mesmo banco, três frentes — cliente, balcão e entregador. Quem
+Android e iOS, mesmo banco, três frentes — cliente, balcão e entregador.
+As duas plataformas são compiladas e testadas no aparelho:
+
+```sh
+./rodar.sh -d "iPhone 17"        # simulador de iOS
+./rodar.sh -d emulator-5554      # emulador de Android
+./rodar.sh --build apk --debug   # gera o APK
+``` Quem
 entra não escolhe qual abrir: o banco é que diz quem a pessoa é.
 
 O aplicativo tem dois modos, escolhidos por configuração: **multi**, com a

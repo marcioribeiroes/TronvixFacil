@@ -27,7 +27,15 @@ enum Toque {
 class Sons {
   /// Um tocador por vez. Reaproveitar a instância evita o estalo de abrir e
   /// fechar a saída de áudio a cada toque.
-  static final _tocador = AudioPlayer();
+  ///
+  /// Sem o `positionUpdater`: o padrão do audioplayers registra um callback de
+  /// quadro para dizer em que segundo o áudio está, e ele continua rodando
+  /// depois que o som acaba. Num teste isso estoura com "An animation is still
+  /// running even after the widget tree was disposed"; no aplicativo é um
+  /// ticker vivo à toa.
+  ///
+  /// Ninguém aqui pergunta a posição do áudio — são toques de meio segundo.
+  static final _tocador = AudioPlayer()..positionUpdater = null;
 
   static bool _ligado = true;
 

@@ -47,15 +47,34 @@ void main() {
     expect(Sessao.instancia.autenticado, isTrue,
         reason: 'não entrou com o usuário de demonstração');
 
-    // --- acha uma mesa de verdade ------------------------------------------
+    // --- acha uma mesa de verdade, numa loja que esteja VENDENDO -----------
+    //
+    // A primeira versão pegava qualquer mesa ativa e falhava com "o
+    // estabelecimento está fechado agora" — o teste passava ou não conforme a
+    // chave da loja e a hora do dia. Agora ele escolhe a mesa de uma loja que
+    // aceita pedido, e diz o que faltou quando não houver nenhuma.
+    final abertas = await banco
+        .from('restaurants')
+        .select('id, aberto_agora')
+        .eq('status', 'approved')
+        .eq('aberto_agora', true);
+
+    final idsAbertos = abertas.map((l) => l['id'] as String).toList();
+
+    if (idsAbertos.isEmpty) {
+      markTestSkipped('Nenhum estabelecimento vendendo agora — abra um para o teste rodar.');
+      return;
+    }
+
     final linhas = await banco
         .from('restaurant_tables')
         .select('code, restaurant_id')
         .eq('is_active', true)
+        .inFilter('restaurant_id', idsAbertos)
         .limit(1);
 
     if (linhas.isEmpty) {
-      markTestSkipped('Nenhuma mesa cadastrada no servidor — pule ou crie uma.');
+      markTestSkipped('Nenhuma loja aberta tem mesa cadastrada.');
       return;
     }
 
