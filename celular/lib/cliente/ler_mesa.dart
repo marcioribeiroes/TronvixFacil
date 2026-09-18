@@ -80,96 +80,114 @@ class _LerMesaState extends State<LerMesa> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Ler o QR da mesa')),
-      body: Column(
-        children: [
-          Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                MobileScanner(
-                  controller: _controle,
-                  onDetect: (captura) {
-                    final valor = captura.barcodes.firstOrNull?.rawValue;
-                    if (valor != null) _resolver(valor);
-                  },
-                  errorBuilder: (context, erro) => _SemCamera(erro: erro),
-                ),
-
-                // A mira. Não recorta nada — o leitor enxerga o quadro inteiro
-                // —, mas diz onde pôr o celular, e isso encurta a leitura.
-                IgnorePointer(
-                  child: Container(
-                    width: 220,
-                    height: 220,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white70, width: 3),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-
-                if (_ocupado)
-                  const ColoredBox(
-                    color: Colors.black54,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Aponte para o QR Code colado na mesa.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                Text(
-                  'Ou digite o código impresso embaixo do QR',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Row(
+      // Rolagem: com o teclado aberto para digitar o código, uma coluna de
+      // altura fixa estoura e o campo some atrás do teclado.
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          children: [
+            // A câmera numa caixa de tamanho conhecido, e não ocupando o que
+            // sobrar: assim o que vem depois — o código digitado, que é a saída
+            // quando a câmera falha — existe de qualquer jeito.
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                height: 320,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _digitado,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        textCapitalization: TextCapitalization.none,
-                        decoration: const InputDecoration(
-                          hintText: 'ex.: 6cxb9enb',
-                          border: OutlineInputBorder(),
-                          isDense: true,
+                    const ColoredBox(color: Colors.black),
+                    MobileScanner(
+                      controller: _controle,
+                      fit: BoxFit.cover,
+                      onDetect: (captura) {
+                        final valor = captura.barcodes.firstOrNull?.rawValue;
+                        if (valor != null) _resolver(valor);
+                      },
+                      errorBuilder: (context, erro) => _SemCamera(erro: erro),
+                    ),
+
+                    // A mira. Não recorta nada — o leitor enxerga o quadro
+                    // inteiro —, mas diz onde pôr o celular.
+                    IgnorePointer(
+                      child: Center(
+                        child: Container(
+                          width: 200,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white70, width: 3),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                        onSubmitted: _resolver,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: _ocupado ? null : () => _resolver(_digitado.text),
-                      child: const Text('Entrar'),
-                    ),
+
+                    if (_ocupado)
+                      const ColoredBox(
+                        color: Colors.black54,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
                   ],
                 ),
-                if (_erro != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _erro!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              // Sem crossAxisAlignment.stretch: dentro de uma rolagem, uma
+              // coluna esticada com uma Row dentro fazia a tela inteira parar
+              // de pintar no Android — sem exceção, sem aviso, só branco.
+              // Descoberto por bissecção: cada peça sozinha funcionava.
+              child: Column(
+                children: [
+                  const Text(
+                    'Aponte para o QR Code colado na mesa.',
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Ou digite o código impresso embaixo do QR',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const Key('codigo-da-mesa'),
+                    controller: _digitado,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textCapitalization: TextCapitalization.none,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      hintText: 'ex.: 6cxb9enb',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onSubmitted: _resolver,
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _ocupado ? null : () => _resolver(_digitado.text),
+                      child: const Text('Entrar na mesa'),
+                    ),
+                  ),
+                  if (_erro != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _erro!,
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
