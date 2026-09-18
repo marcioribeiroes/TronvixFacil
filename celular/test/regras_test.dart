@@ -11,6 +11,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:tronvix_facil/dados/cardapio.dart';
 import 'package:tronvix_facil/dados/carrinho.dart';
 import 'package:tronvix_facil/formato.dart';
 import 'package:tronvix_facil/modelos/modelos.dart';
@@ -302,6 +303,29 @@ void main() {
     test('cada tipo tem o próprio rótulo, na língua do balcão', () {
       expect(TipoDeEntrega.mesa.rotulo, 'Servir na mesa');
       expect(TipoDeEntrega.retirada.rotulo, 'Retirada no balcão');
+    });
+  });
+
+  group('como pagar', () {
+    test('a mesma forma existe nos dois momentos, e sao linhas diferentes', () {
+      const naMaquininha =
+          FormaAceita(FormaDePagamento.credito, MomentoDoPagamento.naEntrega);
+      const noAplicativo =
+          FormaAceita(FormaDePagamento.credito, MomentoDoPagamento.noApp);
+
+      // Se as duas fossem iguais, a tela mostraria "Cartão de crédito" duas
+      // vezes com o mesmo subtítulo — foi o que aconteceu quando a lista
+      // carregava só o método e deduzia o resto.
+      expect(naMaquininha == noAplicativo, isFalse);
+      expect(naMaquininha.quando, 'Na entrega');
+      expect(noAplicativo.quando, 'Pelo aplicativo');
+    });
+
+    test('dinheiro nao muda de momento por causa do rotulo', () {
+      const dinheiro =
+          FormaAceita(FormaDePagamento.dinheiro, MomentoDoPagamento.naEntrega);
+      expect(dinheiro.momento, MomentoDoPagamento.naEntrega);
+      expect(dinheiro.forma.aceitaTroco, isTrue);
     });
   });
 }

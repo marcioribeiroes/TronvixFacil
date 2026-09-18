@@ -100,15 +100,63 @@ class Cardapio {
         return linhas.map((l) => GrupoDeAdicionais.deMapa(l)).toList();
       });
 
-  static Future<List<FormaDePagamento>> formasAceitas(String restauranteId) =>
+  /// As formas que a loja aceita — e que ela consegue mesmo receber.
+  ///
+  /// A lista de `restaurant_payment_methods` diz o que o balcão marcou. O Pix
+  /// precisa de mais do que isso: sem chave cadastrada, `fechar_pedido` recusa
+  /// com "Este estabelecimento ainda nao recebe por Pix". Oferecer a opção e
+  /// recusar no último toque é o pior lugar possível para dar essa notícia —
+  /// quem chegou ali já escolheu o que comer e já escolheu como pagar.
+  static Future<List<FormaAceita>> formasAceitas(String restauranteId) =>
       executar(() async {
-        final linhas = await banco
-            .from('restaurant_payment_methods')
-            .select('method')
-            .eq('restaurant_id', restauranteId)
-            .eq('is_active', true);
+        final resultados = await Future.wait<dynamic>([
+          banco
+              .from('restaurant_payment_methods')
+              .select('method, timing')
+              .eq('restaurant_id', restauranteId)
+              .eq('is_active', true),
+          banco
+              .from('restaurants')
+              .select('aceita_pix')
+              .eq('id', restauranteId)
+              .single(),
+        ]);
+
+        final linhas = resultados[0] as List<dynamic>;
+        final loja = resultados[1] as Map<String, dynamic>;
+        final temChavePix = loja['aceita_pix'] == true;
+
         return linhas
-            .map((l) => FormaDePagamento.de(l['method'] as String))
+            .map((l) => FormaAceita(
+                  FormaDePagamento.de(l['method'] as String),
+                  MomentoDoPagamento.de(l['timing'] as String),
+                ))
+            .where((f) => f.forma != FormaDePagamento.pix || temChavePix)
             .toList();
       });
+}
+
+/// Uma forma que a loja aceita, com o momento em que ela cobra.
+///
+/// Os dois andam juntos porque a mesma forma vale nos dois momentos: cartao de
+/// credito na maquininha do entregador e cartao de credito pelo aplicativo sao
+/// linhas diferentes da mesma loja. Deduzir o momento a partir da forma — "se e
+/// cartao, e pelo aplicativo" — foi o que um dia mandou um pedido pago na
+/// entrega nascer em "aguardando pagamento", onde ficou parado sem ninguem ver.
+class FormaAceita {
+  const FormaAceita(this.forma, this.momento);
+
+  final FormaDePagamento forma;
+  final MomentoDoPagamento momento;
+
+  /// Como a linha se descreve embaixo do nome, na tela de pagamento.
+  String get quando =>
+      momento == MomentoDoPagamento.noApp ? 'Pelo aplicativo' : 'Na entrega';
+
+  @override
+  bool operator ==(Object other) =>
+      other is FormaAceita && other.forma == forma && other.momento == momento;
+
+  @override
+  int get hashCode => Object.hash(forma, momento);
 }

@@ -35,7 +35,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
   final _troco = TextEditingController();
 
   List<Endereco> _enderecos = const [];
-  List<FormaDePagamento> _formasAceitas = const [];
+  List<FormaAceita> _formasAceitas = const [];
   Endereco? _endereco;
   /// A mesa lida no QR, se for desta loja. Quem escaneou já começa nela:
   /// perguntar "onde você quer receber?" a quem acabou de escanear a mesa é
@@ -49,7 +49,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
 
   late TipoDeEntrega _tipo =
       _mesa != null ? TipoDeEntrega.mesa : TipoDeEntrega.entrega;
-  FormaDePagamento? _forma;
+  FormaAceita? _forma;
   int _descontoCentavos = 0;
   String? _cupomAplicado;
   bool _carregando = true;
@@ -82,7 +82,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
 
       if (!mounted) return;
       final enderecos = resultados[0] as List<Endereco>;
-      final formas = resultados[1] as List<FormaDePagamento>;
+      final formas = resultados[1] as List<FormaAceita>;
 
       setState(() {
         _enderecos = enderecos;
@@ -90,8 +90,11 @@ class _TelaCheckoutState extends State<TelaCheckout> {
             enderecos.firstOrNull;
         // Sem forma cadastrada, o estabelecimento ainda não configurou nada;
         // dinheiro na entrega é o padrão que nunca depende de integração.
-        _formasAceitas =
-            formas.isEmpty ? const [FormaDePagamento.dinheiro] : formas;
+        _formasAceitas = formas.isEmpty
+            ? const [
+                FormaAceita(FormaDePagamento.dinheiro, MomentoDoPagamento.naEntrega)
+              ]
+            : formas;
 
         // O padrão é uma forma que se paga na entrega, mesmo que a loja aceite
         // Pix. Enquanto PAGAMENTO_PROVEDOR for "simulado", um pedido pago pelo
@@ -103,7 +106,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
         // Quando o provedor real entrar, esta preferência sai e o padrão volta
         // a ser a primeira forma que o estabelecimento cadastrou.
         _forma = _formasAceitas.firstWhere(
-          (f) => f != FormaDePagamento.pix && f != FormaDePagamento.credito,
+          (f) => f.momento == MomentoDoPagamento.naEntrega,
           orElse: () => _formasAceitas.first,
         );
         _carregando = false;
@@ -123,12 +126,11 @@ class _TelaCheckoutState extends State<TelaCheckout> {
 
   int get _total => _subtotal + _taxa - _descontoCentavos;
 
-  /// Pagar pelo aplicativo só faz sentido nas formas que um gateway processa.
-  /// Dinheiro é sempre na entrega, e o banco recusaria o contrário.
+  /// Quando se paga é o que o estabelecimento cadastrou naquela linha, não o
+  /// que a tela deduz da forma. Cartão de crédito existe nos dois momentos: na
+  /// maquininha do entregador e pelo aplicativo.
   MomentoDoPagamento get _momento =>
-      (_forma == FormaDePagamento.pix || _forma == FormaDePagamento.credito)
-          ? MomentoDoPagamento.noApp
-          : MomentoDoPagamento.naEntrega;
+      _forma?.momento ?? MomentoDoPagamento.naEntrega;
 
   Future<void> _aplicarCupom() async {
     final restaurante = Carrinho.instancia.restaurante;
@@ -173,7 +175,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
     }
 
     int? trocoCentavos;
-    if (_forma == FormaDePagamento.dinheiro && _troco.text.trim().isNotEmpty) {
+    if (_forma?.forma == FormaDePagamento.dinheiro && _troco.text.trim().isNotEmpty) {
       final valor = double.tryParse(
           _troco.text.replaceAll('.', '').replaceAll(',', '.'));
       if (valor != null) trocoCentavos = (valor * 100).round();
@@ -188,7 +190,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
       final pedido = await Pedidos.fechar(
         carrinhoId: carrinhoId,
         tipo: _tipo,
-        forma: _forma!,
+        forma: _forma!.forma,
         momento: _momento,
         enderecoId: _tipo == TipoDeEntrega.entrega ? _endereco?.id : null,
         trocoParaCentavos: trocoCentavos,
@@ -291,20 +293,17 @@ class _TelaCheckoutState extends State<TelaCheckout> {
             ],
           ],
           _titulo('Como pagar'),
-          RadioGroup<FormaDePagamento>(
+          RadioGroup<FormaAceita>(
             groupValue: _forma,
             onChanged: (v) => setState(() => _forma = v),
             child: Column(
               children: [
                 for (final f in _formasAceitas)
-                  RadioListTile<FormaDePagamento>(
+                  RadioListTile<FormaAceita>(
                     value: f,
-                    title: Text(f.rotulo),
+                    title: Text(f.forma.rotulo),
                     subtitle: Text(
-                      (f == FormaDePagamento.pix ||
-                              f == FormaDePagamento.credito)
-                          ? 'Pelo aplicativo'
-                          : 'Na entrega',
+                      f.quando,
                       style: const TextStyle(
                           fontSize: 12.5, color: Cores.textoSuave),
                     ),
@@ -312,7 +311,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
               ],
             ),
           ),
-          if (_forma?.aceitaTroco == true)
+          if (_forma?.forma.aceitaTroco == true)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: TextField(

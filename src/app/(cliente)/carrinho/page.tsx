@@ -17,7 +17,7 @@ export default async function PaginaDoCarrinho() {
   const { data: carrinho } = await supabase
     .from("carts")
     .select(
-      "id, restaurant_id, restaurants(id, name, logo_url, is_open, delivery_fee_cents, free_delivery_above_cents, min_order_cents), cart_items(id, quantity, notes, products(id, name, price_cents, promo_price_cents, promo_starts_at, promo_ends_at), cart_item_addons(quantity, addons(id, name, price_cents)))",
+      "id, restaurant_id, restaurants(id, name, logo_url, is_open, delivery_fee_cents, free_delivery_above_cents, min_order_cents, aceita_pix), cart_items(id, quantity, notes, products(id, name, price_cents, promo_price_cents, promo_starts_at, promo_ends_at), cart_item_addons(quantity, addons(id, name, price_cents)))",
     )
     .eq("user_id", contexto.id)
     .maybeSingle()
@@ -55,6 +55,14 @@ export default async function PaginaDoCarrinho() {
   ])
 
   const loja = carrinho.restaurants
+
+  // Pix so entra na lista quando a loja tem chave cadastrada. A tabela de
+  // formas diz o que o balcao marcou; `aceita_pix` diz o que ele consegue
+  // receber. Sem a chave, `fechar_pedido` recusa — e o ultimo toque, depois de
+  // escolher o que comer e como pagar, e o pior lugar para dar essa noticia.
+  const aceitas = (formas ?? []).filter(
+    (f) => f.method !== "pix" || loja.aceita_pix === true,
+  )
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
@@ -97,7 +105,7 @@ export default async function PaginaDoCarrinho() {
             rotulo: e.label,
             resumo: `${e.street}, ${e.number}${e.complement ? ` — ${e.complement}` : ""}, ${e.district}, ${e.city}-${e.state}`,
           }))}
-          formasAceitas={(formas ?? []).map((f) => ({
+          formasAceitas={aceitas.map((f) => ({
             metodo: f.method,
             momento: f.timing,
           }))}
