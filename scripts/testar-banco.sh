@@ -39,17 +39,25 @@ done
 echo "==> Verificando as regras"
 # O || true e necessario: quando uma regra falha, o psql sai com codigo 1 e o
 # set -e mataria o script antes de mostrar qual verificacao quebrou.
-saida=$(psql -d "$BANCO" -v ON_ERROR_STOP=1 \
-  -f "$RAIZ/supabase/tests/regras_do_pedido.sql" 2>&1) || true
+total=0
+falhou=0
+for teste in "$RAIZ"/supabase/tests/regras_*.sql; do
+  echo "    $(basename "$teste")"
+  saida=$(psql -d "$BANCO" -v ON_ERROR_STOP=1 -f "$teste" 2>&1) || true
 
-echo "$saida" | grep -E "NOTICE:|ERROR:" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //' || true
+  echo "$saida" | grep -E "NOTICE:|ERROR:" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //' || true
 
-if echo "$saida" | grep -q "ERROR:"; then
+  if echo "$saida" | grep -q "ERROR:"; then
+    falhou=1
+  fi
+  total=$(( total + $(echo "$saida" | grep -c "ok - " || true) ))
+done
+
+if [ "$falhou" -eq 1 ]; then
   echo
   echo "FALHOU: ao menos uma regra do banco nao se comportou como esperado."
   exit 1
 fi
 
-total=$(echo "$saida" | grep -c "ok - " || true)
 echo
 echo "$total regras verificadas, todas passaram."

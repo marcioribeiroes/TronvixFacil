@@ -63,6 +63,41 @@ select json_build_object(
     ) ref on true
     where tc.constraint_type = 'FOREIGN KEY' and tc.table_schema = 'public'
   ), '[]'::json),
+  'funcoes', coalesce((
+    -- So as funcoes que o cliente chama por rpc(): as do schema public, que o
+    -- PostgREST expoe. As do schema app sao infraestrutura da RLS e nunca sao
+    -- chamadas de fora. Sem este bloco, rpc('fechar_pedido', ...) tipa os
+    -- parametros como undefined e o TypeScript recusa a chamada inteira.
+    select json_agg(json_build_object(
+      'nome', p.proname,
+      'argumentos', coalesce((
+        select json_agg(json_build_object(
+          'nome', a.nome,
+          'tipo', format_type(a.oid, null),
+          'temPadrao', a.posicao > (p.pronargs - p.pronargdefaults)
+        ) order by a.posicao)
+        from unnest(p.proargnames, p.proargtypes::oid[])
+             with ordinality as a(nome, oid, posicao)
+      ), '[]'::json),
+      'retorno', format_type(p.prorettype, null),
+      'retornaConjunto', p.proretset
+    ) order by p.proname)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prokind = 'f'
+      -- Funcoes de gatilho e as do proprio Postgres nao entram.
+      and format_type(p.prorettype, null) <> 'trigger'
+      and has_function_privilege('authenticated', p.oid, 'execute')
+      -- Fora as que vieram de extensao. pgcrypto e citext instalam dezenas de
+      -- funcoes no schema public (crypt, digest, citextin...) que nao sao do
+      -- projeto, nunca sao chamadas por rpc() e nem sequer tem nome de
+      -- argumento - foi por elas que o gerador quebrou da primeira vez.
+      and not exists (
+        select 1 from pg_depend d
+        where d.objid = p.oid and d.deptype = 'e'
+      )
+  ), '[]'::json),
   'tabelas', coalesce((
     select json_agg(json_build_object('nome', tabela, 'colunas', colunas) order by tabela)
     from (
@@ -103,6 +138,44 @@ function tipoTs(coluna, enums) {
   return TIPOS[coluna.tipo] ?? "unknown"
 }
 
+/**
+ * O tipo de um argumento ou retorno de funcao.
+ *
+ * Vem de `format_type`, que escreve por extenso - "timestamp with time zone",
+ * "character varying" - enquanto as colunas vem de `udt_name`, que abrevia
+ * ("timestamptz", "varchar"). Sao duas grafias do mesmo Postgres, e por isso
+ * a tabela abaixo em vez de reaproveitar TIPOS direto.
+ */
+const TIPOS_DE_FUNCAO = {
+  "timestamp with time zone": "string",
+  "timestamp without time zone": "string",
+  "character varying": "string",
+  "double precision": "number",
+  text: "string",
+  uuid: "string",
+  date: "string",
+  citext: "string",
+  numeric: "number",
+  integer: "number",
+  bigint: "number",
+  smallint: "number",
+  real: "number",
+  boolean: "boolean",
+  json: "Json",
+  jsonb: "Json",
+  void: "undefined",
+  record: "Json",
+}
+
+function tipoDeFuncao(nome, enums) {
+  if (enums.has(nome)) return `Database["public"]["Enums"]["${nome}"]`
+  if (nome.endsWith("[]")) {
+    const base = nome.slice(0, -2).trim()
+    return `${tipoDeFuncao(base, enums)}[]`
+  }
+  return TIPOS_DE_FUNCAO[nome] ?? "unknown"
+}
+
 function consultar() {
   const bruto = execFileSync("psql", ["-d", BANCO, "-t", "-A", "-c", CONSULTA], {
     encoding: "utf8",
@@ -111,7 +184,7 @@ function consultar() {
   return JSON.parse(bruto.trim())
 }
 
-function gerar({ enums, tabelas, relacoes }) {
+function gerar({ enums, tabelas, relacoes, funcoes }) {
   const nomesDeEnum = new Set(enums.map((e) => e.nome))
 
   const blocosDeTabela = tabelas.map(({ nome, colunas }) => {
@@ -150,6 +223,23 @@ function gerar({ enums, tabelas, relacoes }) {
     return `      ${nome}: {\n        Row: {\n${linha}\n        }\n        Insert: {\n${insert}\n        }\n        Update: {\n${update}\n        }\n        Relationships: ${relationships}\n      }`
   })
 
+  const blocosDeFuncao = (funcoes ?? [])
+    .map((f) => {
+      const argumentos = f.argumentos.length
+        ? f.argumentos
+            .map(
+              (a) =>
+                `          ${a.nome}${a.temPadrao ? "?" : ""}: ${tipoDeFuncao(a.tipo, nomesDeEnum)}`,
+            )
+            .join("\n")
+        : "          [chave: string]: never"
+      const retorno = f.retornaConjunto
+        ? `${tipoDeFuncao(f.retorno, nomesDeEnum)}[]`
+        : tipoDeFuncao(f.retorno, nomesDeEnum)
+      return `      ${f.nome}: {\n        Args: {\n${argumentos}\n        }\n        Returns: ${retorno}\n      }`
+    })
+    .join("\n")
+
   const blocosDeEnum = enums
     .map((e) => `      ${e.nome}: ${e.valores.map((v) => `"${v}"`).join(" | ")}`)
     .join("\n")
@@ -159,7 +249,7 @@ function gerar({ enums, tabelas, relacoes }) {
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: ${tabelas.length}   Enums: ${enums.length}
+// Tabelas: ${tabelas.length}   Enums: ${enums.length}   Funcoes: ${(funcoes ?? []).length}
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -169,7 +259,9 @@ export interface Database {
 ${blocosDeTabela.join("\n")}
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+${blocosDeFuncao}
+    }
     Enums: {
 ${blocosDeEnum}
     }
@@ -193,5 +285,5 @@ const schema = consultar()
 writeFileSync(DESTINO, gerar(schema))
 console.log(
   `src/types/banco.ts gerado: ${schema.tabelas.length} tabelas, ${schema.enums.length} enums, ` +
-    `${schema.relacoes.length} relacoes.`,
+    `${schema.relacoes.length} relacoes, ${(schema.funcoes ?? []).length} funcoes.`,
 )

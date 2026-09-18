@@ -91,8 +91,8 @@ const USUARIOS = [
     nome: "Carlos Silva",
     telefone: "62990000005",
     papel: "courier",
-    entregador: true,
-    descricao: "Entregador aprovado (/entregas)",
+    entregador: { restaurante: BURGER_HOUSE },
+    descricao: "Entregador da Burger House (/entregas)",
   },
   {
     email: "cliente@tronvixfacil.com.br",
@@ -115,7 +115,19 @@ async function garantirUsuario(dados) {
     },
   })
 
-  if (criado?.user) return criado.user.id
+  if (criado?.user) {
+    // O gatilho app.handle_new_user NAO aceita 'platform_admin' vindo dos
+    // metadados - metadado de cadastro e escrito pelo cliente, e aceitar isso
+    // deixava qualquer pessoa nascer administrador. A promocao e explicita, e
+    // so passa porque este script usa a chave de servico.
+    if (dados.papel === "platform_admin") {
+      await supabase
+        .from("profiles")
+        .update({ platform_role: "platform_admin" })
+        .eq("id", criado.user.id)
+    }
+    return criado.user.id
+  }
 
   // Ja existe: o script pode rodar de novo sem quebrar.
   if (error && /already/i.test(error.message)) {
@@ -161,8 +173,17 @@ for (const dados of USUARIOS) {
   }
 
   if (dados.entregador) {
+    // O entregador e DE um estabelecimento: e assim que o produto opera, e sem
+    // o vinculo ele nao enxerga corrida nenhuma - a fila e de quem emprega,
+    // nao da plataforma.
     const { error } = await supabase.from("couriers").upsert(
-      { user_id: id, status: "approved", availability: "offline", vehicle_type: "motorcycle" },
+      {
+        user_id: id,
+        restaurant_id: dados.entregador.restaurante,
+        status: "approved",
+        availability: "offline",
+        vehicle_type: "motorcycle",
+      },
       { onConflict: "user_id" },
     )
     if (error) throw new Error(`Entregador ${dados.email}: ${error.message}`)
