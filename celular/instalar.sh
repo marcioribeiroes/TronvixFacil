@@ -56,11 +56,25 @@ for _, aparelhos in d.items():
             print(f\"{a['udid']}\t{a['name']}\")
 " 2>/dev/null)
 
+# O adb quase nunca esta no PATH: quem instala o Android Studio ganha o SDK em
+# ~/Library/Android/sdk e nenhuma linha no .zshrc. Sem procurar ali, este script
+# ignorava o Android inteiro em silencio — e "instalado em todos" virava
+# "instalado nos iPhones".
+ADB="$(command -v adb || true)"
+if [ -z "$ADB" ]; then
+  for candidato in \
+    "${ANDROID_HOME:-}/platform-tools/adb" \
+    "${ANDROID_SDK_ROOT:-}/platform-tools/adb" \
+    "$HOME/Library/Android/sdk/platform-tools/adb"; do
+    [ -x "$candidato" ] && ADB="$candidato" && break
+  done
+fi
+
 androides=()
-if command -v adb >/dev/null; then
+if [ -n "$ADB" ]; then
   while IFS= read -r linha; do
     [ -n "$linha" ] && androides+=("$linha")
-  done < <(adb devices 2>/dev/null | awk '/\tdevice$/ {print $1}')
+  done < <("$ADB" devices 2>/dev/null | awk '/\tdevice$/ {print $1}')
 fi
 
 # Com -d, fica so o que casar com o nome ou o identificador.
@@ -106,7 +120,7 @@ tem_no_ios() {
 
 tem_no_android() {
   local lista
-  lista="$(adb -s "$1" shell pm list packages 2>/dev/null)"
+  lista="$("$ADB" -s "$1" shell pm list packages 2>/dev/null)"
   case "$lista" in *"$ANDROID_ID"*) return 0 ;; *) return 1 ;; esac
 }
 
@@ -175,7 +189,7 @@ if [ "$qtd_android" -gt 0 ]; then
   if ./rodar.sh --build apk --debug >/dev/null 2>&1; then
     for a in "${androides[@]}"; do
       [ -z "$a" ] && continue
-      if adb -s "$a" install -r build/app/outputs/flutter-apk/app-debug.apk >/dev/null 2>&1; then
+      if "$ADB" -s "$a" install -r build/app/outputs/flutter-apk/app-debug.apk >/dev/null 2>&1; then
         echo "    $a"
       else
         echo "    $a — falhou"

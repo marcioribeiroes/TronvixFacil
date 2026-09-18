@@ -37,3 +37,13 @@ yarn-error.log*
 
 # Estado local do CLI do Supabase (referência do projeto, chaves de sessão)
 supabase/.temp
+
+# Chave de assinatura do Android.
+#
+# Perder este arquivo significa nunca mais conseguir ATUALIZAR o aplicativo
+# publicado: o Google identifica a atualizacao pela assinatura, e uma chave
+# nova e tratada como outro aplicativo. Versiona-la e pior ainda — quem tiver o
+# repositorio consegue publicar em nome do dono.
+celular/android/key.properties
+celular/android/app/*.jks
+celular/android/app/*.keystore

@@ -22,6 +22,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tronvix_facil/tema.dart';
 
@@ -73,8 +74,39 @@ const _adaptativo = <String, int>{
 /// A fração da tela de 108dp que é seguramente visível: 72/108.
 const _zonaSegura = 72 / 108;
 
+/// Carrega a Roboto de verdade para desenhar o nome na faixa da loja.
+///
+/// Sem isto o `flutter test` desenha texto com a fonte de teste, que é feita
+/// de retângulos: a faixa saiu uma vez com o nome em tijolinhos brancos. A
+/// fonte vem do próprio cache do Flutter (Roboto, Apache 2.0) — a mesma que o
+/// aplicativo usa no Android, então a faixa fica com a letra do produto.
+Future<void> _carregarAFonte() async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // .../flutter/bin/cache/dart-sdk/bin/dart -> .../flutter/bin/cache
+  var pasta = Directory(Platform.resolvedExecutable).parent;
+  while (pasta.path != pasta.parent.path) {
+    final fontes = Directory('${pasta.path}/artifacts/material_fonts');
+    if (fontes.existsSync()) {
+      for (final peso in const ['Black', 'Medium']) {
+        final arquivo = File('${fontes.path}/Roboto-$peso.ttf');
+        await (FontLoader('Roboto $peso')
+              ..addFont(Future.value(
+                  arquivo.readAsBytesSync().buffer.asByteData())))
+            .load();
+      }
+      return;
+    }
+    pasta = pasta.parent;
+  }
+  fail('não achei as fontes do Flutter a partir de '
+      '${Platform.resolvedExecutable}');
+}
+
 void main() {
   test('gera os ícones', () async {
+    await _carregarAFonte();
+
     for (final e in _ios.entries) {
       await _escrever(
         'ios/Runner/Assets.xcassets/AppIcon.appiconset/${e.key}.png',
@@ -102,6 +134,12 @@ void main() {
       );
     }
     _escreverXmlDoAdaptativo();
+
+    // A Play Store pede o ícone em 512 e uma faixa de 1024x500. As duas saem
+    // do mesmo desenho: manter uma arte separada para a loja é garantir que um
+    // dia ela fique diferente do aplicativo instalado.
+    await _escrever('loja/play-icone-512.png', 512);
+    await _escreverRetangulo('loja/play-faixa-1024x500.png', 1024, 500);
 
     // O de 1024 é o que vai para a App Store e o que se olha para conferir.
     expect(File('ios/Runner/Assets.xcassets/AppIcon.appiconset/'
@@ -287,4 +325,103 @@ void _escreverXmlDoAdaptativo() {
     arquivo.parent.createSync(recursive: true);
     arquivo.writeAsStringSync(xml);
   }
+}
+
+/// A faixa da loja: larga, com o símbolo à esquerda e o nome ao lado.
+///
+/// O ícone quadrado esticado para 1024x500 ficaria com a figura minúscula no
+/// meio de um deserto. Aqui o mesmo fundo e o mesmo alfinete, recompostos para
+/// a proporção que a loja pede.
+Future<void> _escreverRetangulo(String caminho, int largura, int altura) async {
+  final gravador = ui.PictureRecorder();
+  final canvas = Canvas(gravador);
+  final quadro = Rect.fromLTWH(0, 0, largura.toDouble(), altura.toDouble());
+  final marca = Cores.marca;
+
+  canvas.drawRect(
+    quadro,
+    Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF26262C), Color(0xFF121214), Color(0xFF09090B)],
+        stops: [0, 0.55, 1],
+      ).createShader(quadro),
+  );
+
+  // O brilho da marca atrás do símbolo, como no ícone.
+  canvas.drawCircle(
+    Offset(altura * 0.62, altura * 0.5),
+    altura * 0.75,
+    Paint()
+      ..shader = RadialGradient(
+        colors: [marca.withValues(alpha: 0.30), Colors.transparent],
+      ).createShader(Rect.fromCircle(
+        center: Offset(altura * 0.62, altura * 0.5),
+        radius: altura * 0.75,
+      )),
+  );
+
+  // O risco da marca, atravessando a faixa.
+  canvas.save();
+  canvas.clipRect(quadro);
+  canvas.translate(largura / 2, altura * 0.93);
+  canvas.rotate(-9 * math.pi / 180);
+  final faixa = Rect.fromLTWH(-largura.toDouble(), -altura * 0.015, largura * 2, altura * 0.03);
+  canvas.drawRect(
+    faixa,
+    Paint()
+      ..shader = LinearGradient(
+        colors: [Colors.transparent, marca, marca.withValues(alpha: 0.1)],
+      ).createShader(faixa),
+  );
+  canvas.restore();
+
+  // O alfinete, à esquerda, no tamanho da faixa.
+  canvas.save();
+  final lado = altura * 0.66;
+  canvas.translate(altura * 0.30, (altura - lado) / 2);
+  _desenharFigura(canvas, lado);
+  canvas.restore();
+
+  // O nome, ao lado. Duas linhas: "Tronvix" em branco e "Fácil" na cor da
+  // marca — o mesmo tratamento do logotipo da web.
+  void escrever(String texto, double tamanho, Color cor, double y) {
+    final pintor = TextPainter(
+      text: TextSpan(
+        text: texto,
+        style: TextStyle(
+          color: cor,
+          fontSize: tamanho,
+          fontFamily: 'Roboto Black',
+          letterSpacing: -tamanho * 0.02,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    pintor.paint(canvas, Offset(altura * 1.05, y));
+  }
+
+  escrever('Tronvix', altura * 0.20, Colors.white, altura * 0.26);
+  escrever('Fácil', altura * 0.20, marca, altura * 0.48);
+
+  final pintor = TextPainter(
+    text: TextSpan(
+      text: 'Delivery e pedido na mesa',
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.62),
+        fontSize: altura * 0.068,
+        fontFamily: 'Roboto Medium',
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  pintor.paint(canvas, Offset(altura * 1.06, altura * 0.72));
+
+  final imagem = await gravador.endRecording().toImage(largura, altura);
+  final bytes = await imagem.toByteData(format: ui.ImageByteFormat.png);
+
+  final arquivo = File(caminho);
+  arquivo.parent.createSync(recursive: true);
+  arquivo.writeAsBytesSync(bytes!.buffer.asUint8List());
 }
