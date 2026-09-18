@@ -29,7 +29,7 @@ export const metadata: Metadata = {
  * titular o direito de pedir os dados e o apagamento, e a Play confere se a
  * política tem contato.
  */
-const CONTATO = "privacidade@tronvix.com.br"
+const CONTATO = "suporte@tronvix.com.br"
 
 /** Última revisão do texto. Muda quando o que está escrito aqui muda. */
 const REVISADA_EM = "18 de setembro de 2026"

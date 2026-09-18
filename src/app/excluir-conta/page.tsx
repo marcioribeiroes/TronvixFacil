@@ -70,8 +70,8 @@ export default async function ExcluirConta() {
             Contas de <strong>restaurante</strong> e de <strong>entregador</strong> não
             se apagam sozinhas: elas carregam pedidos, comissões e corridas de outras
             pessoas. Escreva para{" "}
-            <a className="underline" href="mailto:privacidade@tronvix.com.br">
-              privacidade@tronvix.com.br
+            <a className="underline" href="mailto:suporte@tronvix.com.br">
+              suporte@tronvix.com.br
             </a>{" "}
             e encerramos junto com você.
           </li>
@@ -100,8 +100,8 @@ export default async function ExcluirConta() {
             </Link>
             <p className="mt-4 text-xs text-muted-foreground">
               Sem acesso ao e-mail da conta? Escreva para{" "}
-              <a className="underline" href="mailto:privacidade@tronvix.com.br">
-                privacidade@tronvix.com.br
+              <a className="underline" href="mailto:suporte@tronvix.com.br">
+                suporte@tronvix.com.br
               </a>{" "}
               — respondemos em até 15 dias.
             </p>
