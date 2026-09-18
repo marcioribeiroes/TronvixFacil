@@ -88,10 +88,14 @@ cardápio que vier no arquivo, e sorteia a senha do dono — mostrada uma única
 vez. O dono abre a loja no painel quando o cardápio estiver conferido; loja que
 nasce aberta com cardápio pela metade recebe pedido que não consegue atender.
 
-Quem chega sozinho continua pelo caminho normal: cadastro público, situação
-`pending`, e a plataforma aprova em `/admin/restaurantes`. O script é para o
-outro caso — alguém da plataforma abrindo a loja de um cliente que já fechou
-negócio.
+**Hoje este é o único caminho.** Não existe cadastro público de
+estabelecimento: `/criar-conta` cria sempre um cliente, e a RLS de `restaurants`
+só aceita INSERT de administrador da plataforma. A seção "Esperando aprovação"
+em `/admin/restaurantes` é máquina pronta sem porta que a alimente — ela existe
+para o dia em que o dono puder se cadastrar sozinho.
+
+Enquanto esse dia não chega, quem fecha negócio com um restaurante o cadastra
+por ele, com este script.
 
 `demo:limpar` só apaga o que tem a marca da semente: estabelecimentos cujo id
 começa com `a0000000-0000-4000-8000-` (cadastro real nunca cai aí, o banco gera
