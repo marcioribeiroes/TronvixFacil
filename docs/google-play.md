@@ -80,6 +80,11 @@ flutter test tool/gerar_capturas.dart  # as capturas de tela
 | Gráfico de destaque (1024×500) | `celular/loja/play-faixa-1024x500.png` |
 | Capturas de telefone (mín. 2, máx. 8) | `celular/loja/play-captura-*.png` |
 
+O gerador escreve as mesmas imagens direto em
+`celular/android/fastlane/metadata/`, que é de onde o envio automatizado as
+lê. Um lugar só: se fossem dois, um dia a loja subiria a captura do mês
+passado.
+
 As capturas cruas vivem em `celular/loja/telas/` e saem do aparelho de verdade:
 
 ```sh
@@ -90,6 +95,34 @@ adb -s emulator-5554 exec-out screencap -p > celular/loja/telas/1-inicio.png
 hoje mostram os restaurantes de demonstração, que não têm foto: o cardápio
 aparece com quadrados cinzentos onde deveria ter comida. Funciona para publicar;
 não é o que vende o aplicativo.
+
+---
+
+## 3b. Enviar por comando, em vez de por clique
+
+A ficha inteira — textos e imagens — está em
+`celular/android/fastlane/metadata/`, versionada junto com o código que ela
+descreve. Para usar:
+
+1. No Console, **crie o app** `br.com.tronvix.tronvix_facil`. A API publica
+   num app que já existe; ela não cria um.
+2. Console → Configurações → **Acesso à API** → vincule um projeto do Google
+   Cloud → crie uma conta de serviço → baixe o JSON.
+3. No Console, dê a essa conta a permissão **Administrador de versões**.
+4. Guarde o JSON fora do repositório:
+
+   ```sh
+   export PLAY_JSON_KEY=~/.chaves/tronvix-play.json
+   cd celular/android
+   fastlane conferir   # valida a chave
+   fastlane interno    # sobe o .aab para o teste interno
+   fastlane producao   # promove com ficha e imagens, como rascunho
+   ```
+
+Nenhum dos dois envia para revisão: isso é um clique humano, de propósito.
+
+Os textos abaixo são os mesmos arquivos daquela pasta — estão aqui para você
+conferir sem abrir o repositório.
 
 ---
 

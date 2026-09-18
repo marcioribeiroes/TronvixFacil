@@ -38,9 +38,26 @@ const _capturas = <(String, String, String)>[
   ('5-carrinho', 'Sem surpresa no total', 'Entrega e desconto na conta antes de você confirmar'),
 ];
 
-/// O tamanho da captura. 9:16, dentro do que a Play aceita (de 16:9 a 9:16).
-const _largura = 1080;
-const _altura = 1920;
+/// Os tamanhos que cada loja quer.
+///
+/// A Play aceita de 16:9 a 9:16 e nao exige medida exata. A Apple exige: a
+/// ficha de hoje pede a tela de 6,9 polegadas, que e 1320x2868 — o pixel certo
+/// ou o envio e recusado.
+/// `(nome, largura, altura, pasta do fastlane)`. A captura e escrita duas
+/// vezes: em `loja/`, para olhar, e direto onde o `fastlane` vai busca-la — se
+/// fossem lugares diferentes, um dia a loja subiria a captura do mes passado.
+const _formatos = <(String, int, int, String)>[
+  ('play', 1080, 1920,
+      'android/fastlane/metadata/android/pt-BR/images/phoneScreenshots'),
+  ('apple', 1320, 2868, 'ios/fastlane/screenshots/pt-BR'),
+];
+
+/// Quanto cortar do topo da captura crua.
+///
+/// A barra de status do aparelho — relogio, sinal, bateria — nao e o
+/// aplicativo, e entrega de qual aparelho saiu a foto. Na captura de 1080x2400
+/// que o `screencap` produz, ela ocupa estes 90 pixels.
+const _barraDeStatus = 90.0;
 
 void main() {
   test('gera as capturas da loja', () async {
@@ -50,22 +67,35 @@ void main() {
       final origem = File('loja/telas/$arquivo.png');
       expect(origem.existsSync(), isTrue,
           reason: 'falta a captura crua ${origem.path}');
-      await _compor(origem, 'loja/play-captura-$arquivo.png', titulo, frase);
+
+      for (final (loja, largura, altura, pasta) in _formatos) {
+        final png = await _compor(origem, titulo, frase, largura, altura);
+
+        File('loja/$loja-captura-$arquivo.png').writeAsBytesSync(png);
+
+        final destino = Directory(pasta)..createSync(recursive: true);
+        File('${destino.path}/$arquivo.png').writeAsBytesSync(png);
+      }
     }
   });
 }
 
-Future<void> _compor(
+Future<Uint8List> _compor(
   File origem,
-  String destino,
   String titulo,
   String frase,
+  int largura,
+  int altura,
 ) async {
   final tela = await _abrir(origem);
 
+  // A tela sem a barra de status do aparelho.
+  final recorte = Rect.fromLTWH(0, _barraDeStatus, tela.width.toDouble(),
+      tela.height - _barraDeStatus);
+
   final gravador = ui.PictureRecorder();
   final canvas = Canvas(gravador);
-  final quadro = Rect.fromLTWH(0, 0, _largura.toDouble(), _altura.toDouble());
+  final quadro = Rect.fromLTWH(0, 0, largura.toDouble(), altura.toDouble());
   final marca = Cores.marca;
 
   // O fundo: o mesmo carvao do icone e do painel de login.
@@ -80,24 +110,23 @@ Future<void> _compor(
       ).createShader(quadro),
   );
 
+  final brilho = Offset(largura * 0.5, altura * 0.22);
   canvas.drawCircle(
-    const Offset(_largura * 0.5, _altura * 0.22),
-    _largura * 0.8,
+    brilho,
+    largura * 0.8,
     Paint()
       ..shader = RadialGradient(
         colors: [marca.withValues(alpha: 0.22), Colors.transparent],
-      ).createShader(Rect.fromCircle(
-        center: const Offset(_largura * 0.5, _altura * 0.22),
-        radius: _largura * 0.8,
-      )),
+      ).createShader(Rect.fromCircle(center: brilho, radius: largura * 0.8)),
   );
 
   // O risco da marca, atras do aparelho.
   canvas.save();
   canvas.clipRect(quadro);
-  canvas.translate(_largura / 2, _altura * 0.33);
+  canvas.translate(largura / 2, altura * 0.33);
   canvas.rotate(-9 * math.pi / 180);
-  final faixa = Rect.fromLTWH(-_largura.toDouble(), -5, _largura * 2, 10);
+  final faixa =
+      Rect.fromLTWH(-largura.toDouble(), -5, largura * 2.0, 10);
   canvas.drawRect(
     faixa,
     Paint()
@@ -107,19 +136,24 @@ Future<void> _compor(
   );
   canvas.restore();
 
+  // Tudo escala com a largura: o mesmo desenho, no tamanho de cada loja.
+  final k = largura / 1080;
+
   _escrever(canvas, titulo,
-      tamanho: 72,
+      tamanho: 72 * k,
       fonte: 'Roboto Black',
       cor: Colors.white,
-      topo: 96,
-      largura: _largura - 120);
+      topo: 96 * k,
+      largura: largura - 120 * k,
+      quadroDaLargura: largura);
 
   _escrever(canvas, frase,
-      tamanho: 38,
+      tamanho: 38 * k,
       fonte: 'Roboto Medium',
       cor: Colors.white.withValues(alpha: 0.66),
-      topo: 190,
-      largura: _largura - 160);
+      topo: 190 * k,
+      largura: largura - 160 * k,
+      quadroDaLargura: largura);
 
   // O aparelho. A tela crua entra inteira, com canto arredondado e sombra —
   // recortar pedaco da tela para "caber melhor" e mostrar um aplicativo que
@@ -127,31 +161,31 @@ Future<void> _compor(
   // Cabe pela largura OU pela altura, o que for mais apertado. Escalar so
   // pela largura cortava o rodape do aplicativo — e a barra de baixo, com o
   // preco e o botao, e justamente o que prova que da para concluir o pedido.
-  const margem = 96.0;
-  const topo = 360.0;
-  const rodape = 72.0;
+  final margem = 96.0 * k;
+  final topo = 360.0 * k;
+  final rodape = 72.0 * k;
   final escala = math.min(
-    (_largura - margem * 2) / tela.width,
-    (_altura - topo - rodape) / tela.height,
+    (largura - margem * 2) / recorte.width,
+    (altura - topo - rodape) / recorte.height,
   );
-  final larguraDaTela = tela.width * escala;
-  final alturaDaTela = tela.height * escala;
+  final larguraDaTela = recorte.width * escala;
+  final alturaDaTela = recorte.height * escala;
   final alvo = Rect.fromLTWH(
-      (_largura - larguraDaTela) / 2, topo, larguraDaTela, alturaDaTela);
-  final cantos = RRect.fromRectAndRadius(alvo, const Radius.circular(36));
+      (largura - larguraDaTela) / 2, topo, larguraDaTela, alturaDaTela);
+  final cantos = RRect.fromRectAndRadius(alvo, Radius.circular(36 * k));
 
   canvas.drawRRect(
-    cantos.shift(const Offset(0, 18)),
+    cantos.shift(Offset(0, 18 * k)),
     Paint()
       ..color = Colors.black.withValues(alpha: 0.55)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 36),
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 36 * k),
   );
 
   canvas.save();
   canvas.clipRRect(cantos);
   canvas.drawImageRect(
     tela,
-    Rect.fromLTWH(0, 0, tela.width.toDouble(), tela.height.toDouble()),
+    recorte,
     alvo,
     Paint()..filterQuality = FilterQuality.high,
   );
@@ -161,13 +195,13 @@ Future<void> _compor(
     cantos,
     Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
+      ..strokeWidth = 2 * k
       ..color = Colors.white.withValues(alpha: 0.12),
   );
 
-  final imagem = await gravador.endRecording().toImage(_largura, _altura);
+  final imagem = await gravador.endRecording().toImage(largura, altura);
   final bytes = await imagem.toByteData(format: ui.ImageByteFormat.png);
-  File(destino).writeAsBytesSync(bytes!.buffer.asUint8List());
+  return bytes!.buffer.asUint8List();
 }
 
 void _escrever(
@@ -178,6 +212,7 @@ void _escrever(
   required Color cor,
   required double topo,
   required double largura,
+  required int quadroDaLargura,
 }) {
   final pintor = TextPainter(
     text: TextSpan(
@@ -194,7 +229,7 @@ void _escrever(
     textAlign: TextAlign.center,
   )..layout(maxWidth: largura);
 
-  pintor.paint(canvas, Offset((_largura - pintor.width) / 2, topo));
+  pintor.paint(canvas, Offset((quadroDaLargura - pintor.width) / 2, topo));
 }
 
 Future<ui.Image> _abrir(File arquivo) async {
