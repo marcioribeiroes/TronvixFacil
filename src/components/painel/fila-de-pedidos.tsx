@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Bike, Clock, StickyNote, Store, Wallet,
+import { Ban, Bike, Clock, StickyNote, Store, Wallet,
   UtensilsCrossed,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { destravarSom, tocarSino } from "@/lib/sino"
 import { criarClienteDoNavegador } from "@/lib/supabase/navegador"
 import { formatarReais } from "@/lib/dinheiro"
 import {
@@ -35,6 +36,8 @@ export type PedidoDaFila = {
   created_at: string
   order_items: { id: string; product_name: string; quantity: number; notes: string | null }[]
   payments: { method: string; timing: string; status: string }[]
+  cancelled_by?: string | null
+  cancellation_reason?: string | null
 }
 
 const FORMA: Record<string, string> = {
@@ -47,45 +50,6 @@ const FORMA: Record<string, string> = {
 
 function minutosDesde(iso: string) {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
-}
-
-/**
- * Toca o alerta de pedido novo.
- *
- * Som gerado na hora pela Web Audio API, sem arquivo: dois bipes curtos, o
- * segundo mais agudo. Arquivo de audio seria mais um recurso para hospedar e
- * mais uma coisa para faltar em producao - e o que precisa acontecer aqui e
- * simples, alguem levantar a cabeca.
- *
- * O navegador so deixa tocar depois de a pessoa ter interagido com a pagina.
- * Por isso o botao de ligar o som existe: o clique nele e a interacao que
- * autoriza, e nao ha como contornar isso - e protecao do navegador contra
- * paginas que gritam sozinhas.
- */
-function tocarAlerta() {
-  try {
-    const Audio = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    const contexto = new Audio()
-    const agora = contexto.currentTime
-
-    for (const [atraso, frequencia] of [
-      [0, 880],
-      [0.18, 1175],
-    ] as const) {
-      const oscilador = contexto.createOscillator()
-      const volume = contexto.createGain()
-      oscilador.frequency.value = frequencia
-      oscilador.type = "sine"
-      volume.gain.setValueAtTime(0.0001, agora + atraso)
-      volume.gain.exponentialRampToValueAtTime(0.3, agora + atraso + 0.02)
-      volume.gain.exponentialRampToValueAtTime(0.0001, agora + atraso + 0.16)
-      oscilador.connect(volume).connect(contexto.destination)
-      oscilador.start(agora + atraso)
-      oscilador.stop(agora + atraso + 0.18)
-    }
-  } catch {
-    // Sem som, a tela continua se atualizando. O alerta e ajuda, nao requisito.
-  }
 }
 
 /**
@@ -103,39 +67,126 @@ function tocarAlerta() {
  */
 export function FilaDePedidos({
   pedidos,
+  cancelados,
   restauranteId,
   chavePublicaDePush,
 }: {
   pedidos: PedidoDaFila[]
+  /** Cancelados nos ultimos vinte minutos. Sumir em silencio e pior. */
+  cancelados: PedidoDaFila[]
   restauranteId: string
   chavePublicaDePush: string
 }) {
   const router = useRouter()
   const [somLigado, setSomLigado] = useState(false)
 
-  // Quantos pedidos novos havia na renderizacao anterior. E a comparacao que
-  // diz se CHEGOU alguem, em vez de tocar a cada mudanca de estado - despachar
-  // um pedido tambem mexe na fila e nao merece alarme.
-  const novosAntes = useRef<number | null>(null)
+  /**
+   * Os pedidos que a tela JA viu, por id.
+   *
+   * Contar não serve. Com a contagem, aceitar um pedido e receber outro no
+   * mesmo instante deixava o número igual e o sino calado; e confirmar um Pix
+   * — que muda "aguardando" para "recebido" — fazia a contagem subir e o sino
+   * tocar para uma ação da própria loja.
+   */
+  const jaVistos = useRef<Set<string> | null>(null)
 
-  const novos = pedidos.filter((p) => p.status === "received").length
+  // Tudo que ainda espera alguém da loja: pedido novo e Pix por confirmar.
+  const esperando = pedidos.filter(
+    (p) => p.status === "received" || p.status === "awaiting_payment",
+  )
+
+  const idsEsperando = esperando.map((p) => p.id).join(",")
 
   useEffect(() => {
-    const anterior = novosAntes.current
-    novosAntes.current = novos
+    const ids = idsEsperando ? idsEsperando.split(",") : []
+    const anterior = jaVistos.current
 
-    if (anterior === null || novos <= anterior) return
+    jaVistos.current = new Set(ids)
 
-    if (somLigado) tocarAlerta()
+    // Primeira renderização: o que já estava na tela não é novidade.
+    if (anterior === null) return
+
+    const chegaram = ids.filter((id) => !anterior.has(id))
+    if (chegaram.length === 0) return
+
+    if (somLigado) tocarSino()
 
     // Aviso do sistema, para quem esta com a aba atras de outra janela.
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification("Pedido novo", {
-        body: `${novos} pedido(s) esperando aceite.`,
+      new Notification(chegaram.length === 1 ? "Pedido novo" : `${chegaram.length} pedidos novos`, {
+        body: `${ids.length} esperando você.`,
         tag: "pedido-novo",
       })
     }
-  }, [novos, somLigado])
+  }, [idsEsperando, somLigado])
+
+  /**
+   * Cancelamento também avisa.
+   *
+   * O pedido sai da fila quando o cliente desiste, e sair em silêncio é a
+   * cozinha continuar fazendo comida que ninguém vai buscar.
+   */
+  const idsCancelados = cancelados.map((p) => p.id).join(",")
+  const cancelamentosVistos = useRef<Set<string> | null>(null)
+
+  useEffect(() => {
+    const ids = idsCancelados ? idsCancelados.split(",") : []
+    const anterior = cancelamentosVistos.current
+    cancelamentosVistos.current = new Set(ids)
+
+    if (anterior === null) return
+    const novos = ids.filter((id) => !anterior.has(id))
+    if (novos.length === 0) return
+
+    // Um golpe só, e mais forte: é um aviso, não um chamado a atender.
+    if (somLigado) tocarSino(0.34)
+
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("Pedido cancelado", {
+        body: "Um pedido saiu da fila. Confira no quadro.",
+        tag: "pedido-cancelado",
+      })
+    }
+  }, [idsCancelados, somLigado])
+
+  /**
+   * Insiste enquanto ninguém atende.
+   *
+   * Um toque só se perde: a pessoa está na chapa, de costas para a tela. A
+   * cada 45 segundos o sino repete, e para sozinho no instante em que a fila
+   * de espera esvazia — não é alarme que alguém precise desligar.
+   */
+  useEffect(() => {
+    if (!somLigado || esperando.length === 0) return
+    const relogio = setInterval(() => tocarSino(0.22), 45_000)
+    return () => clearInterval(relogio)
+  }, [somLigado, esperando.length])
+
+  /**
+   * O som escolhido continua ligado amanhã.
+   *
+   * O navegador exige uma interação antes de deixar tocar, e isso não tem como
+   * contornar. O que dá para evitar é a pessoa ter de achar o botão a cada
+   * carregamento: a escolha fica guardada, e o primeiro clique em qualquer
+   * lugar da página destrava o som de novo.
+   */
+  useEffect(() => {
+    if (localStorage.getItem("tronvix_som_do_balcao") !== "ligado") return
+
+    function destravar() {
+      if (destravarSom()) setSomLigado(true)
+    }
+
+    // Já pode estar liberado, se a pessoa navegou até aqui de dentro do site.
+    destravar()
+    document.addEventListener("pointerdown", destravar, { once: true })
+    document.addEventListener("keydown", destravar, { once: true })
+
+    return () => {
+      document.removeEventListener("pointerdown", destravar)
+      document.removeEventListener("keydown", destravar)
+    }
+  }, [])
 
   useEffect(() => {
     const supabase = criarClienteDoNavegador()
@@ -166,9 +217,13 @@ export function FilaDePedidos({
       chavePublica={chavePublicaDePush}
       aoMudarSom={(ligando) => {
         setSomLigado(ligando)
-        // O clique é a interação que autoriza o navegador a tocar som — e o
-        // primeiro bipe confirma para a pessoa que o alerta funciona.
-        if (ligando) tocarAlerta()
+        localStorage.setItem("tronvix_som_do_balcao", ligando ? "ligado" : "desligado")
+        // O clique é a interação que autoriza o navegador a tocar — e o toque
+        // confirma para a pessoa que o alerta funciona.
+        if (ligando) {
+          destravarSom()
+          tocarSino()
+        }
       }}
     />
   )
@@ -191,6 +246,7 @@ export function FilaDePedidos({
   return (
     <div className="space-y-4">
       {aviso}
+      <Cancelamentos pedidos={cancelados} />
       <Quadro pedidos={pedidos} />
     </div>
   )
@@ -244,6 +300,48 @@ const COLUNAS = [
   },
 ] as const
 
+/**
+ * Os cancelamentos recentes, numa faixa acima do quadro.
+ *
+ * Nao e uma coluna porque nao e uma etapa do trabalho: e um aviso. Como coluna
+ * ficava em sexto lugar, fora da tela, e o pedido que o cliente desistiu sumia
+ * em silencio enquanto a cozinha continuava fazendo a comida.
+ *
+ * Some sozinha depois de vinte minutos. Aviso que nao some vira paisagem.
+ */
+function Cancelamentos({ pedidos }: { pedidos: PedidoDaFila[] }) {
+  if (pedidos.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      {pedidos.map((p) => (
+        <div
+          key={p.id}
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm"
+        >
+          <Ban className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+          <span className="font-bold">nº {p.number}</span>
+          <span className="font-semibold text-destructive">
+            {p.cancelled_by === "cliente"
+              ? "cancelado pelo cliente"
+              : p.cancelled_by === "plataforma"
+                ? "cancelado pela plataforma"
+                : p.status === "rejected"
+                  ? "recusado por vocês"
+                  : "cancelado por vocês"}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">
+            {p.customer_name} · {p.order_items.map((i) => `${i.quantity}× ${i.product_name}`).join(", ")}
+          </span>
+          {p.cancellation_reason && p.cancelled_by !== "cliente" ? (
+            <span className="text-xs text-muted-foreground">{p.cancellation_reason}</span>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Quadro({ pedidos }: { pedidos: PedidoDaFila[] }) {
   return (
     // Rolagem horizontal, e nao colunas que encolhem: cinco colunas espremidas
@@ -288,6 +386,7 @@ function Quadro({ pedidos }: { pedidos: PedidoDaFila[] }) {
             </section>
           )
         })}
+
       </div>
     </div>
   )

@@ -58,6 +58,27 @@ baixa, etiqueta riscada, celular velho — a mesma tela aceita o código impress
 embaixo do QR, escolhido sem `i`, `l`, `o`, `0` e `1` justamente para ser ditado
 sem confusão.
 
+## Cancelar
+
+O cliente desiste **até a loja aceitar**. Depois disso a comida está sendo
+feita, e quem paga a conta do cancelamento é o restaurante — a partir daí o
+cliente pede ao balcão, que decide.
+
+Quem cancelou fica registrado, e a diferença importa:
+
+| | o que significa | motivo |
+|---|---|---|
+| `cliente` | desistiu | opcional — ele não deve explicação |
+| `estabelecimento` | recusou | **obrigatório** — o cliente lê |
+| `plataforma` | suporte resolvendo | opcional |
+
+O autor é decidido pelo **banco**, a partir de quem chamou. A alternativa seria
+o cliente cancelar dizendo que foi o restaurante.
+
+E o cancelamento **aparece no balcão**: uma faixa vermelha acima do quadro, por
+vinte minutos, com o sino tocando. Sem isso o pedido sumiria da fila em silêncio
+e a cozinha continuaria fazendo comida que ninguém ia buscar.
+
 ## Pagamento: Pix direto da loja
 
 O cliente paga pelo celular e **o dinheiro cai direto na conta do restaurante** —
@@ -267,6 +288,22 @@ Duas camadas, porque resolvem coisas diferentes:
 |---|---|---|
 | som na fila | a aba está aberta | instantâneo |
 | **push** | **o navegador está fechado** | segundos |
+
+O som é um sino de recepção sintetizado na hora — parciais inarmônicas, ataque
+instantâneo, queda exponencial. Não é arquivo baixado: som de terceiro tem
+licença, e licença esquecida num produto revendido a restaurantes aparece
+tarde. Dois bipes de oscilador se perdiam no barulho da cozinha e soavam como
+notificação de celular, que o cérebro já aprendeu a ignorar.
+
+O sino toca quando um pedido **novo** chega — identificado pelo id, não pela
+contagem. Contando, aceitar um e receber outro no mesmo instante deixava o
+número igual e o sino calado; e confirmar um Pix fazia a contagem subir e o
+sino tocar para uma ação da própria loja. Enquanto alguém não atende, ele
+repete a cada 45 segundos, e para sozinho quando a fila esvazia.
+
+A escolha de ligar o som fica guardada. O navegador exige uma interação antes
+de deixar tocar e isso não tem como contornar — o que dá para evitar é a pessoa
+procurar o botão a cada carregamento.
 
 O push é Web Push de verdade: o navegador guarda a inscrição no serviço do
 fabricante (FCM, APNs, Mozilla) e um service worker mostra o aviso fora da aba.

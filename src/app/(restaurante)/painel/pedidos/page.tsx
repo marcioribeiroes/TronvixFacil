@@ -29,15 +29,34 @@ export default async function PaginaDePedidos() {
   const meiaNoite = new Date()
   meiaNoite.setHours(0, 0, 0, 0)
 
-  const [{ data: abertos }, { data: doDia }, { data: loja }] = await Promise.all([
+  // Vinte minutos atrás: o quanto um cancelamento ainda interessa a quem está
+  // olhando a tela. Calculado aqui, e não dentro da consulta — chamar Date.now()
+  // no meio da renderização é o tipo de impureza que o lint pega.
+  const vinteMinutos = new Date()
+  vinteMinutos.setMinutes(vinteMinutos.getMinutes() - 20)
+
+  const [{ data: abertos }, { data: cancelados }, { data: doDia }, { data: loja }] =
+    await Promise.all([
     supabase
       .from("orders")
       .select(
-        "id, number, status, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing, status)",
+        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing, status)",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .in("status", ABERTOS)
       .order("created_at"),
+    // Cancelados recentes. Sem isto, o pedido que o cliente desiste some da
+    // tela enquanto alguem olha para ele — e a cozinha continua fazendo comida
+    // que ninguem vai buscar.
+    supabase
+      .from("orders")
+      .select(
+        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing, status)",
+      )
+      .eq("restaurant_id", vinculo.restauranteId)
+      .in("status", ["cancelled", "rejected"])
+      .gte("updated_at", vinteMinutos.toISOString())
+      .order("updated_at", { ascending: false }),
     supabase
       .from("orders")
       .select("total_cents, status")
@@ -91,6 +110,7 @@ export default async function PaginaDePedidos() {
 
       <FilaDePedidos
         pedidos={(abertos ?? []) as PedidoDaFila[]}
+        cancelados={(cancelados ?? []) as PedidoDaFila[]}
         restauranteId={vinculo.restauranteId}
         chavePublicaDePush={process.env.NEXT_PUBLIC_VAPID_CHAVE_PUBLICA ?? ""}
       />

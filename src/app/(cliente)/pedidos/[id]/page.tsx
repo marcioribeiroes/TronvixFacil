@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { CancelarPedido } from "@/components/cliente/cancelar-pedido"
 import { PagarComPix } from "@/components/cliente/pagar-com-pix"
 import { Check } from "lucide-react"
 
@@ -48,7 +49,7 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
   const { data: pedido } = await supabase
     .from("orders")
     .select(
-      "id, number, status, fulfillment, customer_name, address_summary, address_district, notes, subtotal_cents, delivery_fee_cents, discount_cents, total_cents, coupon_code, created_at, restaurants(name), order_items(id, product_name, quantity, total_cents, order_item_addons(addon_name)), payments(method, timing, status, change_for_cents, pix_qr_code), deliveries(status)",
+      "id, number, status, cancelled_by, cancellation_reason, fulfillment, customer_name, address_summary, address_district, notes, subtotal_cents, delivery_fee_cents, discount_cents, total_cents, coupon_code, created_at, restaurants(name), order_items(id, product_name, quantity, total_cents, order_item_addons(addon_name)), payments(method, timing, status, change_for_cents, pix_qr_code), deliveries(status)",
     )
     .eq("id", id)
     .maybeSingle()
@@ -72,6 +73,10 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
     pagamento.status !== "paid" &&
     Boolean(pagamento.pix_qr_code)
 
+  // Desistir vale até a loja aceitar. Depois, o banco recusa — e oferecer um
+  // botão que vai falhar é pior do que não oferecer botão nenhum.
+  const podeCancelar = situacao === "awaiting_payment" || situacao === "received"
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <h1 className="text-sm font-semibold text-muted-foreground">
@@ -80,6 +85,12 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
       <p className="mt-1 text-2xl font-bold tracking-tight">
         {ROTULO_DA_SITUACAO[situacao]}
       </p>
+
+      {podeCancelar ? (
+        <div className="mt-4">
+          <CancelarPedido id={pedido.id} />
+        </div>
+      ) : null}
 
       {pixPendente ? (
         <div className="mt-6">
@@ -92,9 +103,21 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
       ) : null}
 
       {encerradoMal ? (
-        <p className="mt-4 rounded-lg bg-marca-suave px-4 py-3 text-sm text-marca-forte">
-          Este pedido não seguiu adiante.
-        </p>
+        <div className="mt-4 rounded-lg bg-marca-suave px-4 py-3 text-sm text-marca-forte">
+          <p className="font-semibold">
+            {pedido.cancelled_by === "cliente"
+              ? "Você cancelou este pedido."
+              : pedido.cancelled_by === "estabelecimento"
+                ? "O restaurante não pôde atender."
+                : "Este pedido não seguiu adiante."}
+          </p>
+          {/* O motivo só aparece quando é do restaurante: o texto padrão do
+              próprio cancelamento do cliente não acrescenta nada a quem
+              acabou de cancelar. */}
+          {pedido.cancelled_by !== "cliente" && pedido.cancellation_reason ? (
+            <p className="mt-1">{pedido.cancellation_reason}</p>
+          ) : null}
+        </div>
       ) : (
         <ol className="mt-6 space-y-3">
           {etapas.map((etapa, i) => (
