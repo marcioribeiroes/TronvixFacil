@@ -61,6 +61,8 @@ class Pedidos {
     int? trocoParaCentavos,
     String? cupom,
     String? observacao,
+    /// Código do QR da mesa, quando o pedido é feito no salão.
+    String? mesa,
     DateTime? agendadoPara,
   }) =>
       executar(() async {
@@ -74,6 +76,10 @@ class Pedidos {
           'p_coupon_code': cupom,
           'p_notes': observacao,
           'p_scheduled_for': agendadoPara?.toUtc().toIso8601String(),
+          // O código do QR da mesa. Vem da leitura da câmera, nunca de uma
+          // lista na tela: lista de mesas deixaria qualquer um lançar na mesa
+          // do vizinho.
+          'p_mesa': mesa,
         }) as String;
 
         return porId(id);

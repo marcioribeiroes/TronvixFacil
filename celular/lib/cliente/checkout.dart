@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../comum/widgets.dart';
 import '../dados/cardapio.dart';
 import '../dados/carrinho.dart';
+import '../dados/mesa.dart';
 import '../dados/enderecos.dart';
 import '../dados/pedidos.dart';
 import '../formato.dart';
@@ -36,7 +37,18 @@ class _TelaCheckoutState extends State<TelaCheckout> {
   List<Endereco> _enderecos = const [];
   List<FormaDePagamento> _formasAceitas = const [];
   Endereco? _endereco;
-  TipoDeEntrega _tipo = TipoDeEntrega.entrega;
+  /// A mesa lida no QR, se for desta loja. Quem escaneou já começa nela:
+  /// perguntar "onde você quer receber?" a quem acabou de escanear a mesa é
+  /// perguntar o que a pessoa já respondeu.
+  Mesa? get _mesa {
+    final atual = MesaAtual.instancia.mesa;
+    final loja = Carrinho.instancia.restaurante?.id;
+    if (atual == null || loja == null || atual.restauranteId != loja) return null;
+    return atual;
+  }
+
+  late TipoDeEntrega _tipo =
+      _mesa != null ? TipoDeEntrega.mesa : TipoDeEntrega.entrega;
   FormaDePagamento? _forma;
   int _descontoCentavos = 0;
   String? _cupomAplicado;
@@ -105,7 +117,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
 
   int get _subtotal => Carrinho.instancia.subtotalCentavos;
 
-  int get _taxa => _tipo == TipoDeEntrega.retirada
+  int get _taxa => !_tipo.vaiParaRua
       ? 0
       : (Carrinho.instancia.restaurante?.taxaPara(_subtotal) ?? 0);
 
@@ -182,6 +194,7 @@ class _TelaCheckoutState extends State<TelaCheckout> {
         trocoParaCentavos: trocoCentavos,
         cupom: _cupomAplicado,
         observacao: _observacao.text,
+        mesa: _tipo == TipoDeEntrega.mesa ? _mesa?.codigo : null,
       );
 
       // A linha do carrinho já foi apagada pelo próprio fechamento.
@@ -215,12 +228,20 @@ class _TelaCheckoutState extends State<TelaCheckout> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SegmentedButton<TipoDeEntrega>(
-              segments: const [
-                ButtonSegment(
+              segments: [
+                // "Mesa" só aparece para quem escaneou uma. Oferecer a opção a
+                // quem está em casa produziria pedido de salão sem ninguém
+                // sentado — e um prato levado a uma mesa vazia.
+                if (_mesa != null)
+                  ButtonSegment(
+                      value: TipoDeEntrega.mesa,
+                      icon: const Icon(Icons.restaurant),
+                      label: Text(_mesa!.rotulo)),
+                const ButtonSegment(
                     value: TipoDeEntrega.entrega,
                     icon: Icon(Icons.delivery_dining),
                     label: Text('Entrega')),
-                ButtonSegment(
+                const ButtonSegment(
                     value: TipoDeEntrega.retirada,
                     icon: Icon(Icons.storefront),
                     label: Text('Retirar')),

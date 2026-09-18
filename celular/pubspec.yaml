@@ -25,6 +25,10 @@ dependencies:
   # nada de arquivo de terceiro, nada de licença a carregar.
   audioplayers: ^6.1.0
 
+  # Lê o QR Code da mesa pela câmera. Só isso: não gera QR, não lê código de
+  # barras de produto. Quem gera o QR é o servidor, que já tem a biblioteca.
+  mobile_scanner: ^7.4.2
+
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   geolocator: ^13.0.2

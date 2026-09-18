@@ -133,8 +133,20 @@ class _TelaAcompanharState extends State<TelaAcompanhar> {
     'Retirado',
   ];
 
+  /// No salão a última etapa é o prato chegando à mesa. Dizer "Entregue" a
+  /// quem está sentado soa como se alguém fosse tocar a campainha.
+  static const _etapasDaMesa = [
+    'Pedido enviado',
+    'Cozinha aceitou',
+    'Em preparo',
+    'Pronto',
+    'Servido',
+  ];
+
   int _etapaAtual(Pedido p) {
-    if (p.tipo == TipoDeEntrega.retirada) {
+    // Retirada e mesa têm o mesmo número de etapas e a mesma sequência: as
+    // duas pulam a rua. Só os rótulos mudam.
+    if (!p.tipo.vaiParaRua) {
       return switch (p.status) {
         StatusDoPedido.aguardandoPagamento || StatusDoPedido.recebido => 0,
         StatusDoPedido.confirmado => 1,
@@ -204,9 +216,11 @@ class _TelaAcompanharState extends State<TelaAcompanhar> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
               child: Trilha(
-                etapas: p.tipo == TipoDeEntrega.retirada
-                    ? _etapasDeRetirada
-                    : _etapasDeEntrega,
+                etapas: switch (p.tipo) {
+                  TipoDeEntrega.mesa => _etapasDaMesa,
+                  TipoDeEntrega.retirada => _etapasDeRetirada,
+                  TipoDeEntrega.entrega => _etapasDeEntrega,
+                },
                 atual: _etapaAtual(p),
               ),
             ),
@@ -224,6 +238,12 @@ class _TelaAcompanharState extends State<TelaAcompanhar> {
                 style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(haQuantoTempo(p.criadoEm)),
           ),
+          if (p.tipo == TipoDeEntrega.mesa)
+            ListTile(
+              leading: const Icon(Icons.restaurant),
+              title: const Text('Servir em'),
+              subtitle: Text(p.rotuloDaMesa ?? 'Mesa'),
+            ),
           if (p.tipo == TipoDeEntrega.entrega && p.resumoDoEndereco != null)
             ListTile(
               leading: const Icon(Icons.place_outlined),

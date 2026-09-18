@@ -4,6 +4,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Ler o QR Code da mesa. Só a câmera traseira interessa, e o aplicativo
+         funciona sem ela: o código impresso embaixo do QR pode ser digitado. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="tronvix_facil"
         android:name="${applicationName}"

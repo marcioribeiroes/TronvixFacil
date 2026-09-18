@@ -43,7 +43,11 @@ enum PapelNoRestaurante {
 
 enum TipoDeEntrega {
   entrega('delivery'),
-  retirada('pickup');
+  retirada('pickup'),
+
+  /// Pedido feito da mesa, no salão. O cliente lê o QR da mesa, pede pelo
+  /// próprio celular, e o garçom serve — ninguém entrega nada.
+  mesa('dine_in');
 
   const TipoDeEntrega(this.noBanco);
   final String noBanco;
@@ -51,7 +55,15 @@ enum TipoDeEntrega {
   static TipoDeEntrega de(String v) =>
       _porNome(values, (e) => e.noBanco, v, 'fulfillment_type');
 
-  String get rotulo => this == entrega ? 'Entrega' : 'Retirada no balcão';
+  String get rotulo => switch (this) {
+        entrega => 'Entrega',
+        retirada => 'Retirada no balcão',
+        mesa => 'Servir na mesa',
+      };
+
+  /// Só a entrega passa pela rua. Retirada termina no balcão, e mesa termina
+  /// quando o garçom põe o prato na frente do cliente.
+  bool get vaiParaRua => this == entrega;
 }
 
 enum StatusDoPedido {

@@ -52,6 +52,11 @@ está na mesa agora. A **taxa de entrega** é zero, e disso o banco cuida sozinh
 Não há entidade "comanda". Uma mesa acumula vários pedidos — entrada, bebida,
 sobremesa — e a conta é a soma deles, mostrada em `/painel/mesas`.
 
+No aplicativo, o botão **Estou na mesa** abre a câmera. Quando ela falha — luz
+baixa, etiqueta riscada, celular velho — a mesma tela aceita o código impresso
+embaixo do QR, escolhido sem `i`, `l`, `o`, `0` e `1` justamente para ser ditado
+sem confusão.
+
 E o sistema **não gerencia a entrega**: o entregador é do estabelecimento, que o
 aprova e despacha as próprias corridas. Durante a corrida o cliente acompanha a
 moto no mapa — por uma função que devolve só a posição, nunca a linha do

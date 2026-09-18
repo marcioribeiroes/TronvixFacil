@@ -250,7 +250,11 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
               Text(p.nomeDoCliente,
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               Text(
-                '${p.quantidadeDeItens} item(ns) · ${p.tipo.rotulo}'
+                // Na mesa, o destino É a informação: quem prepara precisa
+                // saber para onde o prato vai. Por isso o rótulo da mesa vem
+                // no lugar da palavra "Servir na mesa".
+                '${p.quantidadeDeItens} item(ns) · '
+                '${p.tipo == TipoDeEntrega.mesa ? (p.rotuloDaMesa ?? 'Mesa') : p.tipo.rotulo}'
                 '${p.tipo == TipoDeEntrega.entrega && p.bairroDoEndereco != null ? ' · ${p.bairroDoEndereco}' : ''}',
                 style: const TextStyle(fontSize: 13, color: Cores.textoSuave),
               ),
@@ -258,12 +262,20 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    p.pagamento?.momento == MomentoDoPagamento.naEntrega
-                        ? 'Receber ${emReais(p.totalCentavos)} na entrega'
-                        : 'Pago · ${emReais(p.totalCentavos)}',
-                    style: const TextStyle(fontSize: 13),
+                  // Expanded porque a linha estoura: "Receber R$ 129,80 na
+                  // entrega" ao lado de "Saiu para entrega" não cabe num
+                  // iPhone estreito, e o Flutter pinta a faixa listrada em
+                  // cima do card do pedido. O texto encolhe; o botão, não —
+                  // é nele que o balcão toca.
+                  Expanded(
+                    child: Text(
+                      p.pagamento?.momento == MomentoDoPagamento.naEntrega
+                          ? 'Receber ${emReais(p.totalCentavos)} ${p.tipo == TipoDeEntrega.mesa ? 'na mesa' : p.tipo == TipoDeEntrega.retirada ? 'no balcão' : 'na entrega'}'
+                          : 'Pago · ${emReais(p.totalCentavos)}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   if (Balcao.proximoPasso(p) != null)
                     FilledButton(
                       style: FilledButton.styleFrom(

@@ -223,6 +223,7 @@ void main() {
       expect(StatusDoPedido.de('out_for_delivery'),
           StatusDoPedido.saiuParaEntrega);
       expect(TipoDeEntrega.de('pickup'), TipoDeEntrega.retirada);
+      expect(TipoDeEntrega.de('dine_in'), TipoDeEntrega.mesa);
       expect(FormaDePagamento.de('meal_voucher'), FormaDePagamento.valeRefeicao);
       expect(StatusDaEntrega.de('heading_to_customer'),
           StatusDaEntrega.indoAoCliente);
@@ -288,6 +289,19 @@ void main() {
     test('distância curta aparece em metros', () {
       expect(distanciaKm(0.4), '400 m');
       expect(distanciaKm(2.35), '2.4 km');
+    });
+  });
+
+  group('o salão', () {
+    test('só a entrega passa pela rua', () {
+      expect(TipoDeEntrega.entrega.vaiParaRua, isTrue);
+      expect(TipoDeEntrega.retirada.vaiParaRua, isFalse);
+      expect(TipoDeEntrega.mesa.vaiParaRua, isFalse);
+    });
+
+    test('cada tipo tem o próprio rótulo, na língua do balcão', () {
+      expect(TipoDeEntrega.mesa.rotulo, 'Servir na mesa');
+      expect(TipoDeEntrega.retirada.rotulo, 'Retirada no balcão');
     });
   });
 }

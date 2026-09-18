@@ -488,6 +488,7 @@ class Pedido {
     this.resumoDoEndereco,
     this.bairroDoEndereco,
     this.cidadeDoEndereco,
+    this.rotuloDaMesa,
     this.latitudeDoEndereco,
     this.longitudeDoEndereco,
     this.observacao,
@@ -520,6 +521,11 @@ class Pedido {
   final String? resumoDoEndereco;
   final String? bairroDoEndereco;
   final String? cidadeDoEndereco;
+
+  /// Em qual mesa servir. Cópia, não referência: a mesa pode ser renomeada ou
+  /// removida amanhã, e o pedido de hoje precisa continuar dizendo onde foi
+  /// servido — é o mesmo cuidado do endereço.
+  final String? rotuloDaMesa;
 
   /// Onde o pedido vai chegar. Nulo quando o endereço foi cadastrado sem GPS —
   /// o mapa então mostra só o entregador.
@@ -558,6 +564,7 @@ class Pedido {
       clienteId: m['customer_id'] as String?,
       resumoDoEndereco: m['address_summary'] as String?,
       bairroDoEndereco: m['address_district'] as String?,
+      rotuloDaMesa: m['table_label'] as String?,
       cidadeDoEndereco: m['address_city'] as String?,
       latitudeDoEndereco: _decimal(m['address_latitude']),
       longitudeDoEndereco: _decimal(m['address_longitude']),

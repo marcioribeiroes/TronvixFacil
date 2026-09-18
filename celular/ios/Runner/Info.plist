@@ -66,6 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- A Apple recusa o aplicativo que pede a câmera sem dizer para quê, e
+	     o texto aparece no alerta, para o cliente, no momento em que ele
+	     aponta o celular para a mesa. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Para ler o QR Code da mesa e você pedir pelo próprio celular.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>O Tronvix Fácil usa sua localização para mostrar no mapa onde você está em relação à loja e ao cliente durante a entrega.</string>
 </dict>
