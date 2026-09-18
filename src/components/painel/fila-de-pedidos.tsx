@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Ban, Bike, Clock, StickyNote, Store, Wallet,
+import { Ban, Bike, Clock, Printer, StickyNote, Store, Wallet,
   UtensilsCrossed,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { imprimirComanda, jaImpressos, marcarImpresso } from "@/lib/impressao"
 import { destravarSom, tocarSino } from "@/lib/sino"
 import { criarClienteDoNavegador } from "@/lib/supabase/navegador"
 import { formatarReais } from "@/lib/dinheiro"
@@ -79,6 +80,7 @@ export function FilaDePedidos({
 }) {
   const router = useRouter()
   const [somLigado, setSomLigado] = useState(false)
+  const [imprimindoSozinho, setImprimindoSozinho] = useState(false)
 
   /**
    * Os pedidos que a tela JA viu, por id.
@@ -111,6 +113,19 @@ export function FilaDePedidos({
 
     if (somLigado) tocarSino()
 
+    // A comanda sai sozinha, um pedido de cada vez. Disparar três impressões
+    // no mesmo instante embaralha a fila do driver, e o que sai do papel é
+    // um pedido pela metade seguido de outro.
+    if (imprimindoSozinho) {
+      void (async () => {
+        for (const id of chegaram) {
+          if (jaImpressos().has(id)) continue
+          const ok = await imprimirComanda(id)
+          if (ok) marcarImpresso(id)
+        }
+      })()
+    }
+
     // Aviso do sistema, para quem esta com a aba atras de outra janela.
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       new Notification(chegaram.length === 1 ? "Pedido novo" : `${chegaram.length} pedidos novos`, {
@@ -118,7 +133,7 @@ export function FilaDePedidos({
         tag: "pedido-novo",
       })
     }
-  }, [idsEsperando, somLigado])
+  }, [idsEsperando, somLigado, imprimindoSozinho])
 
   /**
    * Cancelamento também avisa.
@@ -171,10 +186,16 @@ export function FilaDePedidos({
    * lugar da página destrava o som de novo.
    */
   useEffect(() => {
+    // Nos dois casos a leitura é adiada para depois do quadro: chamar setState
+    // direto dentro do efeito encadeia renderizações, e o lint pega.
+    if (localStorage.getItem("tronvix_comanda_automatica") === "ligada") {
+      queueMicrotask(() => setImprimindoSozinho(true))
+    }
+
     if (localStorage.getItem("tronvix_som_do_balcao") !== "ligado") return
 
     function destravar() {
-      if (destravarSom()) setSomLigado(true)
+      if (destravarSom()) queueMicrotask(() => setSomLigado(true))
     }
 
     // Já pode estar liberado, se a pessoa navegou até aqui de dentro do site.
@@ -215,6 +236,11 @@ export function FilaDePedidos({
     <AvisoDePedidos
       somLigado={somLigado}
       chavePublica={chavePublicaDePush}
+      imprimindoSozinho={imprimindoSozinho}
+      aoMudarImpressao={(ligando) => {
+        setImprimindoSozinho(ligando)
+        localStorage.setItem("tronvix_comanda_automatica", ligando ? "ligada" : "desligada")
+      }}
       aoMudarSom={(ligando) => {
         setSomLigado(ligando)
         localStorage.setItem("tronvix_som_do_balcao", ligando ? "ligado" : "desligado")
@@ -551,6 +577,17 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
         </span>
 
         <div className="flex gap-2">
+          {/* Reimprimir. Comanda cai atrás do balcão, papel acaba no meio, o
+              garçom leva a errada — e a fila não pode depender de ninguém ter
+              guardado o papel. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Imprimir a comanda do pedido ${p.number}`}
+            onClick={() => void imprimirComanda(p.id)}
+          >
+            <Printer className="size-4" aria-hidden="true" />
+          </Button>
           {novo || esperandoPix ? (
             <Button
               variant="outline"

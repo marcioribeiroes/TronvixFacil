@@ -164,6 +164,41 @@ ele.
 As colunas rolam na horizontal em vez de encolher: cinco colunas espremidas num
 monitor de balcão viram cinco tiras ilegíveis.
 
+## Comanda na impressora térmica
+
+Quando o pedido entra em **Chegou**, a comanda pode sair sozinha. O botão fica
+no topo da tela de Pedidos: *Imprimir sozinho*. A escolha fica guardada, e cada
+cartão tem um botão de reimprimir — comanda cai atrás do balcão, papel acaba no
+meio, o garçom leva a errada.
+
+O caminho é o **driver do sistema**, não ESC/POS pela USB. Falar ESC/POS
+funcionaria sem diálogo, mas exigiria conhecer o modelo de cada cliente —
+Epson, Elgin e Bematech respondem a comandos diferentes, com peculiaridades de
+corte e de gaveta. Pelo driver, funciona com qualquer impressora que o
+computador já imprime.
+
+A comanda é uma página própria (`/painel/comanda/<id>`), impressa de um iframe.
+Imprimir a própria tela exigiria esconder o quadro inteiro no CSS e torcer para
+não ter esquecido nada.
+
+Medidas: **72mm** de largura (o papel de 80mm imprime 72; os 8mm restantes são
+a margem do mecanismo), fonte monoespaçada, **sem cinza** — impressora térmica
+queima o papel em vez de usar tinta, e cinza claro simplesmente não aparece.
+
+### Para sair sem o diálogo de impressão
+
+O navegador sempre mostra a janela de impressão, e isso não se contorna por
+código. O que resolve é abrir o Chrome do balcão com a impressora térmica como
+padrão e a opção de impressão silenciosa:
+
+```
+chrome.exe --kiosk-printing
+```
+
+No atalho da área de trabalho: botão direito → Propriedades → acrescente
+` --kiosk-printing` no fim do campo *Destino*. A partir daí a comanda sai
+direto, sem ninguém tocar em nada.
+
 ## Aberto agora
 
 Duas coisas fecham a loja, e qualquer uma basta:

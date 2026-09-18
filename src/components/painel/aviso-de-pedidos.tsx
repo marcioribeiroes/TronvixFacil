@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
-import { Bell, BellOff, BellRing } from "lucide-react"
+import { Bell, BellOff, BellRing,
+  Printer,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -45,10 +47,15 @@ function comoTexto(chave: ArrayBuffer | null) {
 export function AvisoDePedidos({
   somLigado,
   aoMudarSom,
+  imprimindoSozinho,
+  aoMudarImpressao,
   chavePublica,
 }: {
   somLigado: boolean
   aoMudarSom: (ligado: boolean) => void
+  /** A comanda sai na impressora assim que o pedido chega. */
+  imprimindoSozinho: boolean
+  aoMudarImpressao: (ligado: boolean) => void
   chavePublica: string
 }) {
   const [enviando, iniciar] = useTransition()
@@ -135,14 +142,25 @@ export function AvisoDePedidos({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3">
       <span className="text-sm text-muted-foreground">
-        {inscrito
+        {imprimindoSozinho
+          ? "A comanda sai na impressora assim que o pedido chega."
+          : inscrito
           ? "Você recebe aviso mesmo com o navegador fechado."
           : somLigado
             ? "O som avisa enquanto esta aba estiver aberta. Ligue o aviso no aparelho para saber do pedido depois de fechá-la."
             : "Ligue os avisos para não depender de olhar a tela."}
       </span>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={imprimindoSozinho ? "outline" : "ghost"}
+          onClick={() => aoMudarImpressao(!imprimindoSozinho)}
+        >
+          <Printer className="size-4" aria-hidden="true" />
+          {imprimindoSozinho ? "Imprimindo sozinho" : "Imprimir sozinho"}
+        </Button>
+
         <Button
           size="sm"
           variant={somLigado ? "outline" : "default"}
