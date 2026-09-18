@@ -52,7 +52,8 @@ está na mesa agora. A **taxa de entrega** é zero, e disso o banco cuida sozinh
 Não há entidade "comanda". Uma mesa acumula vários pedidos — entrada, bebida,
 sobremesa — e a conta é a soma deles, mostrada em `/painel/mesas`.
 
-No aplicativo, o botão **Estou na mesa** abre a câmera. Quando ela falha — luz
+No aplicativo, o convite **"Está num restaurante?"** fica no topo da vitrine e
+abre a câmera. Quando ela falha — luz
 baixa, etiqueta riscada, celular velho — a mesma tela aceita o código impresso
 embaixo do QR, escolhido sem `i`, `l`, `o`, `0` e `1` justamente para ser ditado
 sem confusão.

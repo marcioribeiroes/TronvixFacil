@@ -25,6 +25,11 @@ dependencies:
   # nada de arquivo de terceiro, nada de licença a carregar.
   audioplayers: ^6.1.0
 
+  # Lembra em qual fluxo a pessoa estava. Declarado, e não herdado do
+  # supabase_flutter: quem depende, declara — senão quebra no dia em que o
+  # terceiro trocar a dependência dele.
+  shared_preferences: ^2.5.5
+
   # Lê o QR Code da mesa pela câmera. Só isso: não gera QR, não lê código de
   # barras de produto. Quem gera o QR é o servidor, que já tem a biblioteca.
   mobile_scanner: ^7.4.2

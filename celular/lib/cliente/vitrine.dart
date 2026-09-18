@@ -14,7 +14,11 @@ import 'acompanhar.dart';
 import 'restaurante.dart';
 
 class TelaVitrine extends StatefulWidget {
-  const TelaVitrine({super.key});
+  const TelaVitrine({super.key, this.aoLerMesa});
+
+  /// Abre a câmera para ler o QR da mesa. Nulo quando não há como ler — no
+  /// modo único a vitrine nem existe.
+  final Future<void> Function()? aoLerMesa;
 
   @override
   State<TelaVitrine> createState() => _TelaVitrineState();
@@ -117,6 +121,10 @@ class _TelaVitrineState extends State<TelaVitrine> {
                       ).then((_) => _carregar()),
                     ),
                   ),
+                // Espaço para o botão flutuante "Estou na mesa", que fica por
+                // cima do fim da lista. Sem isto, o último restaurante nasce
+                // tapado — e o último é justamente o que acabou de se
+                // cadastrar, o que mais quer ser visto.
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ),
@@ -136,6 +144,47 @@ class _TelaVitrineState extends State<TelaVitrine> {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
+
+          // As duas formas de usar o aplicativo, lado a lado: pedir de casa e
+          // pedir sentado. Era um botão flutuante, e botão flutuante cobre o
+          // fim da lista em qualquer rolagem — justamente o restaurante que
+          // acabou de se cadastrar.
+          if (widget.aoLerMesa != null) ...[
+            InkWell(
+              onTap: widget.aoLerMesa,
+              borderRadius: BorderRadius.circular(12),
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: Cores.marca.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.qr_code_scanner, color: Cores.marcaEscura),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Está num restaurante?',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Cores.marcaEscura)),
+                          Text('Leia o QR da mesa e peça daqui mesmo',
+                              style: TextStyle(
+                                  fontSize: 12.5, color: Cores.marcaEscura)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: Cores.marcaEscura),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+
           TextField(
             controller: _busca,
             textInputAction: TextInputAction.search,

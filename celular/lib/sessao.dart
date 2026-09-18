@@ -15,6 +15,10 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import 'dart:async';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'dados/supabase.dart';
 import 'modelos/modelos.dart';
 
@@ -44,18 +48,62 @@ class Sessao extends ChangeNotifier {
         if (_entregador != null) Fluxo.entregador,
       ];
 
-  Fluxo get fluxo =>
-      _fluxoEscolhido ??
-      (_vinculo != null
-          ? Fluxo.restaurante
-          : _entregador != null
-              ? Fluxo.entregador
-              : Fluxo.cliente);
+  /// Em qual fluxo o aplicativo abre.
+  ///
+  /// Cliente por padrão, mesmo para quem tem loja ou entrega. Este aplicativo
+  /// é, antes de tudo, o de quem pede comida — é ele que vai para a loja de
+  /// aplicativos, e é a tela que um cliente novo precisa ver primeiro. O dono
+  /// de restaurante que abria direto no balcão não conseguia nem ver a vitrine
+  /// do próprio produto.
+  ///
+  /// Quem trabalha no balcão o dia inteiro não paga por isso: a escolha fica
+  /// guardada, e o aplicativo reabre onde a pessoa estava.
+  Fluxo get fluxo {
+    final escolhido = _fluxoEscolhido;
+    if (escolhido != null && fluxosDisponiveis.contains(escolhido)) {
+      return escolhido;
+    }
+    return Fluxo.cliente;
+  }
 
   void trocarDeFluxo(Fluxo novo) {
     if (!fluxosDisponiveis.contains(novo)) return;
     _fluxoEscolhido = novo;
     notifyListeners();
+    _guardarFluxo(novo);
+  }
+
+  static const _chaveDoFluxo = 'fluxo_escolhido';
+
+  /// Guardar e ler não travam a tela: o aplicativo abre no cliente e corrige
+  /// para o fluxo guardado quando o disco responder, o que leva milissegundos.
+  /// Esperar o disco para desenhar a primeira tela é trocar um erro raro por
+  /// uma lentidão em toda abertura.
+  Future<void> _guardarFluxo(Fluxo f) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_chaveDoFluxo, f.name);
+    } catch (_) {
+      // Sem disco, o aplicativo continua funcionando — só esquece a escolha.
+    }
+  }
+
+  Future<void> _lerFluxoGuardado() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final nome = prefs.getString(_chaveDoFluxo);
+      if (nome == null) return;
+
+      final f = Fluxo.values.where((v) => v.name == nome).firstOrNull;
+      // Só vale se a pessoa ainda pode abrir esse fluxo: quem deixou de ser
+      // entregador não pode reabrir nas corridas.
+      if (f != null && fluxosDisponiveis.contains(f) && _fluxoEscolhido == null) {
+        _fluxoEscolhido = f;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Idem.
+    }
   }
 
   /// Lê no banco quem é a pessoa autenticada.
@@ -113,6 +161,10 @@ class Sessao extends ChangeNotifier {
       _perfil = p == null ? null : Perfil.deMapa(p);
       _entregador = c == null ? null : Entregador.deMapa(c);
       _vinculo = v == null ? null : VinculoComRestaurante.deMapa(v);
+
+      // Depois de saber quem a pessoa é — e só depois, porque a escolha
+      // guardada só vale se ela ainda tiver aquele fluxo.
+      unawaited(_lerFluxoGuardado());
     } finally {
       _carregando = false;
       notifyListeners();

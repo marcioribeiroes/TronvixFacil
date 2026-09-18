@@ -63,7 +63,7 @@ class _InicioDoClienteState extends State<InicioDoCliente> {
               // loja. Quem instalou o aplicativo do restaurante não quer escolher
               // restaurante.
               if (!Ambiente.unico)
-                const TelaVitrine()
+                TelaVitrine(aoLerMesa: _lerMesa)
               else if (Ambiente.coerente)
                 TelaRestaurante.porSlug(Ambiente.estabelecimento)
               else
@@ -79,13 +79,6 @@ class _InicioDoClienteState extends State<InicioDoCliente> {
         ),
       ],
     ),
-    floatingActionButton: _aba == 0
-        ? FloatingActionButton.extended(
-            onPressed: _lerMesa,
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Estou na mesa'),
-          )
-        : null,
     bottomNavigationBar: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
