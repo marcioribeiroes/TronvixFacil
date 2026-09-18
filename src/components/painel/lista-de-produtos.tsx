@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useTransition } from "react"
 import { Pencil, Plus, Star, Trash2 } from "lucide-react"
 
@@ -47,8 +48,18 @@ export function ListaDeProdutos({
       <div className="rounded-xl border border-dashed p-10 text-center">
         <p className="font-semibold">Crie uma seção antes</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Todo produto pertence a uma seção do cardápio. Comece por Categorias.
+          Todo produto pertence a uma seção do cardápio — Lanches, Bebidas,
+          Sobremesas. É exigência do banco, não da tela.
         </p>
+        {/* O botao e o ponto: a versao anterior mandava "comece por Categorias"
+            e deixava a pessoa procurar onde era isso. Tela que sabe o proximo
+            passo e nao leva ate ele e um beco sem saida com instrucoes. */}
+        <Link
+          href="/painel/categorias"
+          className="mt-4 inline-flex h-10 items-center rounded-lg bg-marca px-5 text-sm font-semibold text-white transition-colors hover:bg-marca-forte"
+        >
+          Criar a primeira seção
+        </Link>
       </div>
     )
   }

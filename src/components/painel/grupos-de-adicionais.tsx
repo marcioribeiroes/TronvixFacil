@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useTransition } from "react"
 import { Plus, Trash2 } from "lucide-react"
 
@@ -55,6 +56,12 @@ export function GruposDeAdicionais({
         <p className="mt-1 text-sm text-muted-foreground">
           Adicional pertence a um produto: é o que o cliente escolhe junto dele.
         </p>
+        <Link
+          href="/painel/produtos"
+          className="mt-4 inline-flex h-10 items-center rounded-lg bg-marca px-5 text-sm font-semibold text-white transition-colors hover:bg-marca-forte"
+        >
+          Ir para Produtos
+        </Link>
       </div>
     )
   }

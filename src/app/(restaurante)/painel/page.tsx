@@ -44,7 +44,7 @@ export default async function DashboardDoRestaurante() {
   const hoje = new Date()
   hoje.setHours(0, 0, 0, 0)
 
-  const [{ data: loja }, { data: pedidos }, { count: produtos }, { count: entregadores }] =
+  const [{ data: loja }, { data: pedidos }, { count: produtos }, { count: secoes }, { count: entregadores }] =
     await Promise.all([
       supabase
         .from("restaurants")
@@ -64,6 +64,11 @@ export default async function DashboardDoRestaurante() {
         .select("id", { count: "exact", head: true })
         .eq("restaurant_id", vinculo.restauranteId)
         .eq("is_available", true)
+        .is("deleted_at", null),
+      supabase
+        .from("categories")
+        .select("id", { count: "exact", head: true })
+        .eq("restaurant_id", vinculo.restauranteId)
         .is("deleted_at", null),
       supabase
         .from("couriers")
@@ -117,8 +122,16 @@ export default async function DashboardDoRestaurante() {
       chave: "cardapio",
       titulo: "Cardápio com produto disponível",
       ok: (produtos ?? 0) > 0,
-      pendencia: "Sem produto disponível não há o que pedir.",
-      acao: { rotulo: "Montar cardápio", href: "/painel/produtos" },
+      pendencia:
+        (secoes ?? 0) === 0
+          ? "O cardápio começa pelas seções: Lanches, Bebidas, Sobremesas. Produto sem seção o banco não aceita."
+          : "Sem produto disponível não há o que pedir.",
+      // Mandar para Produtos quem ainda nao tem secao e mandar para uma tela
+      // que so sabe dizer "volte". O primeiro passo de verdade e a secao.
+      acao:
+        (secoes ?? 0) === 0
+          ? { rotulo: "Criar seções", href: "/painel/categorias" }
+          : { rotulo: "Montar cardápio", href: "/painel/produtos" },
     },
     {
       chave: "endereco",
