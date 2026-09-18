@@ -43,7 +43,7 @@ export default async function PaginaInicial() {
     supabase
       .from("restaurants")
       .select(
-        "id, slug, name, description, logo_url, rating_avg, rating_count, delivery_fee_cents, avg_prep_minutes, avg_delivery_minutes, is_open",
+        "id, slug, name, description, logo_url, rating_avg, rating_count, delivery_fee_cents, avg_prep_minutes, avg_delivery_minutes, is_open, aberto_agora",
       )
       .eq("status", "approved")
       .is("deleted_at", null)
@@ -115,7 +115,7 @@ export default async function PaginaInicial() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-2">
                       <span className="truncate font-semibold">{restaurante.name}</span>
-                      {restaurante.is_open ? null : (
+                      {restaurante.aberto_agora ? null : (
                         <Badge variant="secondary" className="shrink-0 text-[10px]">
                           Fechado
                         </Badge>

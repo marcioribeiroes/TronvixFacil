@@ -23,7 +23,7 @@ export default async function PaginaDoRestaurante({
   const { data: restaurante } = await supabase
     .from("restaurants")
     .select(
-      "id, slug, name, description, logo_url, cover_url, is_open, rating_avg, rating_count, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes",
+      "id, slug, name, description, logo_url, cover_url, is_open, aberto_agora, rating_avg, rating_count, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes",
     )
     .eq("slug", slug)
     .eq("status", "approved")
@@ -76,7 +76,7 @@ export default async function PaginaDoRestaurante({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight">{restaurante.name}</h1>
-            {restaurante.is_open ? null : <Badge variant="secondary">Fechado</Badge>}
+            {restaurante.aberto_agora ? null : <Badge variant="secondary">Fechado</Badge>}
           </div>
           {restaurante.description ? (
             <p className="mt-1 text-muted-foreground">{restaurante.description}</p>
@@ -115,7 +115,7 @@ export default async function PaginaDoRestaurante({
         </div>
       </header>
 
-      {restaurante.is_open ? null : (
+      {restaurante.aberto_agora ? null : (
         <p className="mt-5 rounded-lg bg-marca-suave px-4 py-3 text-sm text-marca-forte">
           Fechado agora. Você pode olhar o cardápio, mas o pedido só sai quando abrir —
           é o banco que recusa, não a tela.
@@ -125,7 +125,7 @@ export default async function PaginaDoRestaurante({
       <div className="mt-8">
         <CardapioDoCliente
           restauranteId={restaurante.id}
-          aberto={restaurante.is_open}
+          aberto={restaurante.aberto_agora ?? false}
           secoes={(categorias ?? [])
             .map((c) => ({
               id: c.id,

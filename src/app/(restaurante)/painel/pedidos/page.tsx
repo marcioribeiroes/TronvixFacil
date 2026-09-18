@@ -41,7 +41,7 @@ export default async function PaginaDePedidos() {
       .gte("created_at", meiaNoite.toISOString()),
     supabase
       .from("restaurants")
-      .select("id, name, is_open")
+      .select("id, name, is_open, no_horario")
       .eq("id", vinculo.restauranteId)
       .single(),
   ])
@@ -62,7 +62,11 @@ export default async function PaginaDePedidos() {
         </div>
 
         {loja ? (
-          <ChaveDaLoja aberta={loja.is_open} podeMexer={vinculo.cargo !== "staff"} />
+          <ChaveDaLoja
+            aberta={loja.is_open}
+            noHorario={loja.no_horario !== false}
+            podeMexer={vinculo.cargo !== "staff"}
+          />
         ) : null}
       </div>
 

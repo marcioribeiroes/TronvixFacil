@@ -58,6 +58,30 @@ baixa, etiqueta riscada, celular velho — a mesma tela aceita o código impress
 embaixo do QR, escolhido sem `i`, `l`, `o`, `0` e `1` justamente para ser ditado
 sem confusão.
 
+## Aberto agora
+
+Duas coisas fecham a loja, e qualquer uma basta:
+
+| | o que é | quem mexe |
+|---|---|---|
+| `is_open` | a chave da mão | o balcão, quando acaba o gás |
+| `restaurant_hours` | a rotina | cadastrada uma vez, reabre sozinha |
+
+O banco responde a pergunta pronta, em duas colunas calculadas: **`aberto_agora`**
+("vende agora?", que é o que a vitrine pergunta) e **`no_horario`** (só o
+relógio, que é o que o painel precisa para dizer *por que* não vende). Coluna
+calculada não vem no `select *` — tem de ser pedida pelo nome.
+
+O fuso é de cada loja (`restaurants.timezone`, padrão `America/Sao_Paulo`). O
+Postgres do Supabase roda em UTC, e "abre às 18h" em Goiânia comparado direto
+abriria a loja três horas cedo.
+
+Faixa que atravessa a meia-noite conta: 18:00–02:00 vale até as duas da manhã do
+dia seguinte, que é quando a pizzaria mais vende.
+
+Loja **sem horário cadastrado** vale só pela chave. Fechar quem nunca preencheu
+a tela seria tirar do ar lojas que estão vendendo hoje.
+
 E o sistema **não gerencia a entrega**: o entregador é do estabelecimento, que o
 aprova e despacha as próprias corridas. Durante a corrida o cliente acompanha a
 moto no mapa — por uma função que devolve só a posição, nunca a linha do

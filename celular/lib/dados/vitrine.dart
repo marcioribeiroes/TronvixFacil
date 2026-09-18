@@ -62,10 +62,13 @@ class Vitrine {
     int limite = 50,
   }) =>
       executar(() async {
+        // `aberto_agora` é coluna calculada, e `*` não a traz: o PostgREST só
+        // devolve o que for pedido pelo nome. Sem ela, a vitrine mostraria
+        // aberta uma loja que só abre às 18h.
         var consulta = banco.from('restaurants').select(
               categoriaId == null
-                  ? '*'
-                  : '*, restaurant_platform_categories!inner(category_id)',
+                  ? '*, aberto_agora'
+                  : '*, aberto_agora, restaurant_platform_categories!inner(category_id)',
             );
 
         if (busca != null && busca.trim().isNotEmpty) {

@@ -110,6 +110,14 @@ select json_build_object(
              ) with ordinality as a(nome, oid, modo, posicao)
         where a.modo in ('o', 't', 'b')
       ), '[]'::json),
+      -- Os tipos de entrada, na ordem, independentes de nome. Uma coluna
+      -- calculada do PostgREST se declara "f(tabela)" — sem nome de parametro
+      -- —, e entao proargnames vem nulo e a lista de argumentos sai vazia.
+      'tiposDeEntrada', coalesce((
+        select json_agg(format_type(x.t, null) order by x.o)
+        from unnest(coalesce(p.proallargtypes, p.proargtypes::oid[]))
+             with ordinality as x(t, o)
+      ), '[]'::json),
       'retorno', format_type(p.prorettype, null),
       'retornaConjunto', p.proretset
     ) order by p.proname)
@@ -221,11 +229,45 @@ function consultar() {
 
 function gerar({ enums, tabelas, relacoes, funcoes }) {
   const nomesDeEnum = new Set(enums.map((e) => e.nome))
+  const nomesDeTabela = new Set(tabelas.map((t) => t.nome))
+
+  /**
+   * Colunas calculadas do PostgREST.
+   *
+   * Uma funcao `f(nome_da_tabela) returns escalar` vira, para o PostgREST, uma
+   * coluna virtual daquela tabela: `select=*,f`. O cliente tipado nao adivinha
+   * isso sozinho — sem esta parte, pedir a coluna faz o TypeScript responder
+   * "column 'f' does not exist" e perder o tipo da consulta inteira.
+   *
+   * Entram so no Row: nao se escreve numa coluna que o banco calcula.
+   */
+  const ehColunaCalculada = (f) =>
+    (f.tiposDeEntrada ?? []).length === 1 &&
+    (f.saidas ?? []).length === 0 &&
+    nomesDeTabela.has(f.tiposDeEntrada[0])
+
+  const calculadas = new Map()
+  for (const f of funcoes ?? []) {
+    if (!ehColunaCalculada(f)) continue
+
+    const tabela = f.tiposDeEntrada[0]
+    if (!calculadas.has(tabela)) calculadas.set(tabela, [])
+    calculadas.get(tabela).push({ nome: f.nome, tipo: f.retorno })
+  }
 
   const blocosDeTabela = tabelas.map(({ nome, colunas }) => {
-    const linha = colunas
-      .map((c) => `          ${c.nome}: ${tipoTs(c, nomesDeEnum)}${c.nulo ? " | null" : ""}`)
-      .join("\n")
+    const virtuais = (calculadas.get(nome) ?? []).map(
+      // Sempre anulavel: a coluna so vem quando o select a pede, e uma funcao
+      // pode devolver null.
+      (c) => `          ${c.nome}: ${tipoDeFuncao(c.tipo, nomesDeEnum)} | null`,
+    )
+
+    const linha = [
+      ...colunas.map(
+        (c) => `          ${c.nome}: ${tipoTs(c, nomesDeEnum)}${c.nulo ? " | null" : ""}`,
+      ),
+      ...virtuais,
+    ].join("\n")
 
     // Insert: opcional quando a coluna tem padrao no banco ou aceita nulo.
     const insert = colunas
@@ -259,6 +301,7 @@ function gerar({ enums, tabelas, relacoes, funcoes }) {
   })
 
   const blocosDeFuncao = (funcoes ?? [])
+    .filter((f) => !ehColunaCalculada(f))
     .map((f) => {
       const argumentos = f.argumentos.length
         ? f.argumentos

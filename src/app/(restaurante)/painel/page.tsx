@@ -49,7 +49,7 @@ export default async function DashboardDoRestaurante() {
       supabase
         .from("restaurants")
         .select(
-          "status, is_open, phone, street, number, district, city, postal_code, delivery_fee_cents, min_order_cents, avg_prep_minutes, commission_bps, logo_url",
+          "status, is_open, aberto_agora, phone, street, number, district, city, postal_code, delivery_fee_cents, min_order_cents, avg_prep_minutes, commission_bps, logo_url",
         )
         .eq("id", vinculo.restauranteId)
         .single(),
@@ -158,9 +158,17 @@ export default async function DashboardDoRestaurante() {
     {
       chave: "aberta",
       titulo: "Loja aberta",
-      ok: loja?.is_open === true,
-      pendencia: "Fechada, ela aparece na vitrine mas não aceita pedido.",
-      acao: { rotulo: "Abrir", href: "/painel/configuracoes" },
+      // Duas coisas fecham a loja, e o dono precisa saber qual das duas foi:
+      // "abre a loja" não resolve nada quando o que fecha é o horário.
+      ok: loja?.aberto_agora === true,
+      pendencia:
+        loja?.is_open === false
+          ? "A chave está desligada. Fechada, ela aparece na vitrine mas não aceita pedido."
+          : "Fora do horário de funcionamento. Ela reabre sozinha no próximo turno.",
+      acao:
+        loja?.is_open === false
+          ? { rotulo: "Abrir", href: "/painel/configuracoes" }
+          : { rotulo: "Ver horários", href: "/painel/configuracoes" },
     },
   ]
 
@@ -169,7 +177,12 @@ export default async function DashboardDoRestaurante() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{vinculo.nome}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {loja?.is_open ? "Aberta agora." : "Fechada agora."} Comissão da plataforma:{" "}
+          {loja?.aberto_agora
+            ? "Aberta agora."
+            : loja?.is_open === false
+              ? "Fechada: a chave está desligada."
+              : "Fechada: fora do horário de funcionamento."}{" "}
+          Comissão da plataforma:{" "}
           {((loja?.commission_bps ?? 0) / 100).toFixed(2).replace(".", ",")}%.
         </p>
       </div>

@@ -96,6 +96,12 @@ class Restaurante {
   final String id;
   final String slug;
   final String nome;
+  /// Vende agora? É a chave da mão E o horário de funcionamento, as duas
+  /// concordando — o banco calcula em `aberto_agora`, para a vitrine não ter
+  /// de buscar o horário de trinta lojas e cruzar no celular.
+  ///
+  /// Sem a coluna calculada no `select`, cai em `is_open`: melhor errar para o
+  /// lado de uma tela que ainda funciona do que quebrar.
   final bool aberto;
   final int taxaDeEntregaCentavos;
   final int pedidoMinimoCentavos;
@@ -121,7 +127,7 @@ class Restaurante {
         id: m['id'] as String,
         slug: m['slug'] as String,
         nome: m['name'] as String,
-        aberto: (m['is_open'] as bool?) ?? false,
+        aberto: (m['aberto_agora'] as bool?) ?? (m['is_open'] as bool?) ?? false,
         taxaDeEntregaCentavos: _centavos(m['delivery_fee_cents']),
         pedidoMinimoCentavos: _centavos(m['min_order_cents']),
         minutosDePreparo: (m['avg_prep_minutes'] as int?) ?? 30,

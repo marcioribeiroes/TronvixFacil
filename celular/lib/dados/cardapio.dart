@@ -14,14 +14,22 @@ class SecaoDoCardapio {
 
 class Cardapio {
   static Future<Restaurante> restaurante(String id) => executar(() async {
-        final linha = await banco.from('restaurants').select().eq('id', id).single();
+        final linha = await banco
+            .from('restaurants')
+            .select('*, aberto_agora')
+            .eq('id', id)
+            .single();
         return Restaurante.deMapa(linha);
       });
 
   static Future<Restaurante> restaurantePorSlug(String slug) =>
       executar(() async {
         final linha =
-            await banco.from('restaurants').select().eq('slug', slug).single();
+            await banco
+                .from('restaurants')
+                .select('*, aberto_agora')
+                .eq('slug', slug)
+                .single();
         return Restaurante.deMapa(linha);
       });
 
