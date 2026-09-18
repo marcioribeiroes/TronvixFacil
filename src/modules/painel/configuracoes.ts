@@ -216,3 +216,100 @@ export async function salvarImagemDaLoja(
   revalidatePath(`/restaurante/${vinculo.slug}`)
   return { ok: true }
 }
+
+/**
+ * A chave Pix da loja.
+ *
+ * O dinheiro vai direto para a conta do restaurante — a plataforma nao passa no
+ * meio, nao retem nada e nao cobra taxa por transacao. O que ela faz e montar o
+ * codigo com o valor certo e mostrar ao cliente.
+ *
+ * Nome e cidade nao sao enfeite: eles aparecem no aplicativo do banco na hora
+ * de confirmar, e nome que o cliente nao reconhece e pagamento que nao acontece.
+ */
+export async function salvarPix(dados: {
+  chave: string
+  tipo: string
+  nomeDoRecebedor: string
+  cidade: string
+}): Promise<ResultadoDaAcao> {
+  const { vinculo } = await exigirGestao()
+  const supabase = await criarClienteDoServidor()
+
+  const chave = dados.chave.trim()
+
+  // Apagar a chave desliga o Pix — e a tela de fechar pedido deixa de
+  // oferece-lo, em vez de oferecer e falhar.
+  if (chave === "") {
+    const { error } = await supabase
+      .from("restaurants")
+      .update({ pix_key: null, pix_key_type: null })
+      .eq("id", vinculo.restauranteId)
+    if (error) return { ok: false, erro: error.message }
+    revalidatePath("/painel/configuracoes")
+    return { ok: true }
+  }
+
+  const tipos = ["cpf", "cnpj", "email", "telefone", "aleatoria"]
+  if (!tipos.includes(dados.tipo)) {
+    return { ok: false, erro: "Escolha o tipo da chave.", campo: "tipo" }
+  }
+
+  const erroDaChave = conferirChavePix(chave, dados.tipo)
+  if (erroDaChave) return { ok: false, erro: erroDaChave, campo: "chave" }
+
+  if (dados.nomeDoRecebedor.trim().length < 2) {
+    return {
+      ok: false,
+      erro: "O nome de quem recebe aparece no banco do cliente.",
+      campo: "nomeDoRecebedor",
+    }
+  }
+  if (dados.cidade.trim().length < 2) {
+    return { ok: false, erro: "A cidade também entra no código.", campo: "cidade" }
+  }
+
+  const { error } = await supabase
+    .from("restaurants")
+    .update({
+      pix_key: chave,
+      pix_key_type: dados.tipo,
+      pix_recipient_name: dados.nomeDoRecebedor.trim(),
+      pix_city: dados.cidade.trim(),
+    })
+    .eq("id", vinculo.restauranteId)
+
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/configuracoes")
+  revalidatePath("/painel")
+  return { ok: true }
+}
+
+/**
+ * Chave errada so aparece quando o cliente tenta pagar — e ai o pedido ja
+ * esta parado. Conferir aqui e mais barato do que descobrir depois.
+ */
+function conferirChavePix(chave: string, tipo: string): string | null {
+  const digitos = chave.replace(/\D/g, "")
+
+  switch (tipo) {
+    case "cpf":
+      return digitos.length === 11 ? null : "CPF tem 11 dígitos."
+    case "cnpj":
+      return digitos.length === 14 ? null : "CNPJ tem 14 dígitos."
+    case "telefone":
+      return digitos.length >= 10 && digitos.length <= 13
+        ? null
+        : "Telefone com DDD, entre 10 e 13 dígitos."
+    case "email":
+      return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(chave) ? null : "E-mail inválido."
+    case "aleatoria":
+      // A chave aleatória do Banco Central é um uuid.
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(chave)
+        ? null
+        : "A chave aleatória tem o formato de um UUID."
+    default:
+      return "Tipo de chave desconhecido."
+  }
+}

@@ -11,6 +11,10 @@ export const metadata: Metadata = { title: "Pedidos" }
 
 /** Os estados em que o pedido ainda pede alguma coisa de alguem. */
 const ABERTOS = [
+  // "aguardando pagamento" entra na fila de propósito: é o Pix que o cliente
+  // ainda não pagou, e alguém da loja precisa VER para confirmar. Fora daqui,
+  // o pedido ficava invisível e parado para sempre.
+  "awaiting_payment",
   "received",
   "confirmed",
   "preparing",
@@ -29,7 +33,7 @@ export default async function PaginaDePedidos() {
     supabase
       .from("orders")
       .select(
-        "id, number, status, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing)",
+        "id, number, status, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing, status)",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .in("status", ABERTOS)

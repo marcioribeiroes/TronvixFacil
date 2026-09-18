@@ -110,3 +110,26 @@ export async function abrirOuFecharLoja(aberto: boolean): Promise<ResultadoDaAca
   revalidatePath("/painel")
   return { ok: true }
 }
+
+/**
+ * O balcao confirma que o Pix caiu.
+ *
+ * Nao ha provedor de pagamento: o dinheiro vai direto do cliente para a conta
+ * do restaurante, e quem ve o dinheiro entrar e o dono. Por isso a confirmacao
+ * e um ato de gente, e nao um webhook.
+ *
+ * A regra inteira vive em `confirmar_pix`, no banco: marcar o pagamento e
+ * soltar o pedido acontecem na mesma transacao. Separadas, uma poderia
+ * acontecer sem a outra — pagamento pago com pedido parado.
+ */
+export async function confirmarPix(id: string): Promise<ResultadoDaAcao> {
+  await exigirVinculo()
+  const supabase = await criarClienteDoServidor()
+
+  const { error } = await supabase.rpc("confirmar_pix", { p_pedido: id })
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/pedidos")
+  revalidatePath("/painel")
+  return { ok: true }
+}

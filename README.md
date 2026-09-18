@@ -58,6 +58,32 @@ baixa, etiqueta riscada, celular velho — a mesma tela aceita o código impress
 embaixo do QR, escolhido sem `i`, `l`, `o`, `0` e `1` justamente para ser ditado
 sem confusão.
 
+## Pagamento: Pix direto da loja
+
+O cliente paga pelo celular e **o dinheiro cai direto na conta do restaurante** —
+a plataforma não passa no meio, não retém nada e não cobra taxa por transação.
+Não há gateway, não há contrato, funciona no dia em que a loja cadastra a chave
+(Configurações → *Receber por Pix*).
+
+A contrapartida está escrita na tela: **a confirmação é manual.** O pedido fica
+na coluna *Chegou* marcado como "aguardando Pix", e alguém do balcão confirma
+quando o dinheiro entra. Enquanto não confirmar, a cozinha não começa — é a
+proteção contra o pedido que ninguém pagou.
+
+O "copia e cola" é montado **pelo banco de dados**, dentro de `fechar_pedido`,
+com a chave da loja e o total que a própria função calculou. Nem o aplicativo
+nem o navegador têm como trocar a chave de quem recebe. É a mesma regra que
+sustenta o projeto — *o preço não vem do aplicativo* — aplicada ao dinheiro que
+vai entrar numa conta.
+
+Sem chave cadastrada, a loja simplesmente **não oferece** Pix. Antes disso,
+escolher "Pix pelo site" criava um pedido em `awaiting_payment` que nunca
+chegava à cozinha: o cliente achava que pediu, e o restaurante nunca soube.
+
+O formato é o EMV® QRCPS do Banco Central, com CRC16/CCITT-FALSE. A conta do
+CRC é conferida contra o valor de checagem publicado do algoritmo (`29B1` para
+`123456789`), e a versão SQL é comparada byte a byte com a de TypeScript.
+
 ## Fotos
 
 Um balde público no Storage (`imagens`), com a pasta nomeada pelo id do

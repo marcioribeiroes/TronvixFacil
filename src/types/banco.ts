@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 32   Enums: 14   Funcoes: 8
+// Tabelas: 32   Enums: 14   Funcoes: 10
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -1614,7 +1614,12 @@ export interface Database {
           deleted_at: string | null
           accepts_platform_couriers: boolean
           timezone: string
+          pix_key: string | null
+          pix_key_type: string | null
+          pix_recipient_name: string | null
+          pix_city: string | null
           aberto_agora: boolean | null
+          aceita_pix: boolean | null
           no_horario: boolean | null
         }
         Insert: {
@@ -1656,6 +1661,10 @@ export interface Database {
           deleted_at?: string | null
           accepts_platform_couriers?: boolean
           timezone?: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_recipient_name?: string | null
+          pix_city?: string | null
         }
         Update: {
           id?: string
@@ -1696,6 +1705,10 @@ export interface Database {
           deleted_at?: string | null
           accepts_platform_couriers?: boolean
           timezone?: string
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_recipient_name?: string | null
+          pix_city?: string | null
         }
         Relationships: [
           {
@@ -1868,6 +1881,12 @@ export interface Database {
           p_email?: string
         }
         Returns: { id: string; slug: string }[]
+      }
+      confirmar_pix: {
+        Args: {
+          p_pedido: string
+        }
+        Returns: undefined
       }
       criar_mesas: {
         Args: {

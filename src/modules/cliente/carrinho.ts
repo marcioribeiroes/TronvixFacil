@@ -183,9 +183,11 @@ export async function fecharPedido(dados: {
 
   if (error) return { ok: false, erro: error.message }
 
+  const pedidoId = id as string
+
   recarregar()
   revalidatePath("/pedidos")
-  return { ok: true, id: id as string }
+  return { ok: true, id: pedidoId }
 }
 
 /**

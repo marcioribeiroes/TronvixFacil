@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 import { ConfiguracoesDaLoja } from "@/components/painel/configuracoes-da-loja"
 import { FotosDaLoja } from "@/components/painel/fotos-da-loja"
+import { PixDaLoja } from "@/components/painel/pix-da-loja"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirGestao } from "@/modules/auth/sessao"
 
@@ -15,7 +16,7 @@ export default async function PaginaDeConfiguracoes() {
     supabase
       .from("restaurants")
       .select(
-        "id, name, description, phone, logo_url, cover_url, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes, delivery_radius_km, accepts_scheduled_orders",
+        "id, name, description, phone, city, logo_url, cover_url, pix_key, pix_key_type, pix_recipient_name, pix_city, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes, delivery_radius_km, accepts_scheduled_orders",
       )
       .eq("id", vinculo.restauranteId)
       .single(),
@@ -47,6 +48,17 @@ export default async function PaginaDeConfiguracoes() {
         restauranteId={loja.id}
         logoUrl={loja.logo_url}
         capaUrl={loja.cover_url}
+      />
+
+      <PixDaLoja
+        nomeDaLoja={loja.name}
+        cidadeDaLoja={loja.city}
+        pix={{
+          chave: loja.pix_key,
+          tipo: loja.pix_key_type,
+          nomeDoRecebedor: loja.pix_recipient_name,
+          cidade: loja.pix_city,
+        }}
       />
 
       <ConfiguracoesDaLoja

@@ -18,7 +18,7 @@ import {
   type TipoDeEntrega,
 } from "@/modules/pedidos/maquina-de-estados"
 import { AvisoDePedidos } from "@/components/painel/aviso-de-pedidos"
-import { avancarPedido, recusarPedido } from "@/modules/painel/pedidos"
+import { avancarPedido, confirmarPix, recusarPedido } from "@/modules/painel/pedidos"
 
 export type PedidoDaFila = {
   id: string
@@ -34,7 +34,7 @@ export type PedidoDaFila = {
   total_cents: number
   created_at: string
   order_items: { id: string; product_name: string; quantity: number; notes: string | null }[]
-  payments: { method: string; timing: string }[]
+  payments: { method: string; timing: string; status: string }[]
 }
 
 const FORMA: Record<string, string> = {
@@ -316,6 +316,13 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
   const pagamento = p.payments[0]
   const naEntrega = pagamento?.timing === "on_delivery"
 
+  // Pix pelo site, ainda não confirmado. É o único caso em que o pedido está
+  // parado esperando a loja, e não a cozinha.
+  const esperandoPix =
+    situacao === "awaiting_payment" &&
+    pagamento?.method === "pix" &&
+    pagamento.status !== "paid"
+
   function avancar() {
     if (!destino) return
     setErro(null)
@@ -401,6 +408,29 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
         </p>
       ) : null}
 
+      {esperandoPix ? (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
+          <p className="text-sm font-semibold">Aguardando Pix</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            O cliente recebeu o código. Confirme quando o dinheiro entrar na conta — procure
+            por <strong>TF{p.number}</strong> no extrato.
+          </p>
+          <Button
+            size="sm"
+            className="mt-2 w-full"
+            disabled={enviando}
+            onClick={() =>
+              iniciar(async () => {
+                const r = await confirmarPix(p.id)
+                if (!r.ok) setErro(r.erro)
+              })
+            }
+          >
+            Recebi o Pix
+          </Button>
+        </div>
+      ) : null}
+
       <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
         <span className="inline-flex items-center gap-1.5 text-sm">
           <Wallet className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -410,6 +440,10 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
               <strong>{formatarReais(p.total_cents)}</strong> em{" "}
               {FORMA[pagamento.method] ?? pagamento.method}
             </>
+          ) : esperandoPix ? (
+            <>
+              A receber · <strong>{formatarReais(p.total_cents)}</strong> por Pix
+            </>
           ) : (
             <>
               Pago · <strong>{formatarReais(p.total_cents)}</strong>
@@ -418,7 +452,7 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
         </span>
 
         <div className="flex gap-2">
-          {novo ? (
+          {novo || esperandoPix ? (
             <Button
               variant="outline"
               size="sm"
@@ -428,7 +462,10 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
               Recusar
             </Button>
           ) : null}
-          {destino ? (
+          {/* Sem "Confirmar pedido" enquanto o Pix não cai: quem solta o pedido
+              é o botão de recebimento, e ter dois caminhos para a cozinha seria
+              o caminho de mandar comida que ninguém pagou. */}
+          {destino && !esperandoPix ? (
             <Button size="sm" onClick={avancar} disabled={enviando}>
               {ACAO_DA_SITUACAO[destino]}
             </Button>

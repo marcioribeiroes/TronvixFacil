@@ -69,6 +69,13 @@ insert into restaurants (
 insert into restaurant_members (restaurant_id, user_id, role)
 values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'owner');
 
+-- Chave Pix da loja: sem ela, fechar_pedido recusa Pix pelo site, e com razao
+-- — era esse o pedido que nascia esperando um pagamento impossivel.
+update restaurants
+   set pix_key = '12345678000190', pix_key_type = 'cnpj',
+       pix_recipient_name = 'Burger House', pix_city = 'Vitoria'
+ where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+
 insert into categories (id, restaurant_id, name)
 values ('cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'Lanches');
 
@@ -206,6 +213,23 @@ begin
   perform pg_temp.conferir(
     (select status from orders where id = v_pedido) = 'awaiting_payment',
     'pagamento pelo aplicativo espera o pagamento');
+
+  -- O "copia e cola" nasce com o pedido, e com o total que o BANCO calculou.
+  perform pg_temp.conferir(
+    (select pix_qr_code from payments where order_id = v_pedido) like '000201%',
+    'o codigo do Pix e montado junto com o pedido');
+  -- O campo 54 e o valor, e o tamanho dele entra no proprio campo: "68.00" tem
+  -- cinco caracteres, entao sai "540568.00". Montar o esperado com o tamanho
+  -- calculado evita um teste que so passa para valores de duas casas.
+  perform pg_temp.conferir(
+    (select pix_qr_code from payments where order_id = v_pedido) like
+      '%' || app.campo_emv('54',
+        to_char((select total_cents from orders where id = v_pedido) / 100.0,
+                'FM999999990.00')) || '%',
+    'o valor no codigo e o total do pedido, nao o que a tela somou');
+  perform pg_temp.conferir(
+    (select pix_qr_code from payments where order_id = v_pedido) like '%12345678000190%',
+    'a chave e a da loja, e vem do banco');
 
   update products set price_cents = 2500 where id = 'dddddddd-0000-0000-0000-000000000001';
 end;
