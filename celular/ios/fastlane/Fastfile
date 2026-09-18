@@ -48,16 +48,62 @@ platform :ios do
     api
   end
 
-  desc "Registra o app no App Store Connect e o identificador no Developer"
+  desc "Cria o registro do app no App Store Connect"
   lane :criar do
-    produce(
-      api_key: chave,
-      app_identifier: APP,
-      app_name: "Tronvix Fácil",
-      language: "Brazilian Portuguese",
-      app_version: "1.0.0",
-      sku: "tronvix-facil-br",
-    )
+    chave
+
+    if Spaceship::ConnectAPI::App.find(APP)
+      UI.success("O app #{APP} já existe no App Store Connect.")
+      next
+    end
+
+    # A Apple nao deixa criar app por API: `apps` aceita GET e UPDATE, nunca
+    # CREATE. Tentamos, e a resposta dela e literal:
+    #
+    #   The resource 'apps' does not allow 'CREATE'.
+    #
+    # Entao esta lane nao cria — ela diz onde criar. E o unico passo do
+    # processo que precisa de um navegador, e acontece uma vez na vida do app.
+    UI.user_error!(<<~FIM)
+      A Apple nao cria app por API. Faca uma vez, no site:
+
+        https://appstoreconnect.apple.com/apps  >  +  >  Novo app
+
+        Plataforma ....... iOS
+        Nome ............. Tronvix Facil
+        Idioma principal . Portugues (Brasil)
+        Pacote ........... #{APP}
+        SKU .............. tronvix-facil-br
+        Acesso ........... Acesso total
+
+      Depois disso, `fastlane beta` e `fastlane loja` fazem o resto.
+    FIM
+  end
+
+  desc "Registra o identificador do app no portal de desenvolvedor"
+  #
+  # O registro do app dentro do App Store Connect — aquele que dá nome, idioma
+  # e SKU — a Apple ainda não expõe por API: é o único passo que precisa ser
+  # feito no site, em appstoreconnect.apple.com > Apps > +.
+  #
+  # O identificador, esse sim, sai daqui. Sem ele o Xcode não assina nada.
+  lane :identificador do
+    # `produce` ainda pede usuário e senha de Apple ID mesmo com a chave de API
+    # na mão. O Spaceship, que é o que ele usa por baixo, aceita a chave — e é
+    # só isso que precisamos aqui.
+    chave
+
+    ja = Spaceship::ConnectAPI::BundleId.find(APP)
+    if ja
+      UI.success("O identificador #{APP} já estava registrado.")
+    else
+      Spaceship::ConnectAPI::BundleId.create(
+        name: "Tronvix Facil",
+        identifier: APP,
+        platform: Spaceship::ConnectAPI::BundleIdPlatform::IOS,
+      )
+      UI.success("Identificador #{APP} registrado.")
+    end
   end
 
   desc "Compila, assina e sobe para o TestFlight"
