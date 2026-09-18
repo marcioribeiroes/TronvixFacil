@@ -22,7 +22,23 @@ As duas plataformas são compiladas e testadas no aparelho:
 ./rodar.sh -d "iPhone 17"        # simulador de iOS
 ./rodar.sh -d emulator-5554      # emulador de Android
 ./rodar.sh --build apk --debug   # gera o APK
-``` Quem
+```
+
+### O aplicativo sumindo do simulador
+
+`flutter test integration_test` e `flutter drive` instalam uma versão
+instrumentada, rodam o teste e **desinstalam** ao terminar. O atalho some da
+tela inicial, e parece defeito do simulador quando é só o ciclo do teste.
+
+```sh
+./instalar.sh              # reinstala em todo aparelho ligado
+./instalar.sh --conferir   # só diz onde está e onde sumiu
+./instalar.sh --se-faltar  # só onde faltar, sem compilar à toa
+```
+
+Os scripts de teste já chamam `--se-faltar` ao terminar, passando ou falhando.
+Chamar `flutter test` direto na mão pula esse cuidado — foi assim que os três
+aparelhos ficaram vazios ao mesmo tempo. Quem
 entra não escolhe qual abrir: o banco é que diz quem a pessoa é.
 
 O aplicativo tem dois modos, escolhidos por configuração: **multi**, com a
