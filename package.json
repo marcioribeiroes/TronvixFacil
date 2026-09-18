@@ -16,7 +16,9 @@
     "db:semente": "bash scripts/semear.sh",
     "verificar": "npm run lint && npm run test && npm run build",
     "db:administrador": "node scripts/criar-administrador.mjs",
-    "avisos:ligar": "node scripts/ligar-avisos.mjs"
+    "avisos:ligar": "node scripts/ligar-avisos.mjs",
+    "loja:abrir": "node scripts/abrir-restaurante.mjs",
+    "demo:limpar": "node scripts/limpar-demonstracao.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

@@ -1,0 +1,66 @@
+{
+  "_leia": "Copie este arquivo, troque pelos dados da loja de verdade e rode: node scripts/abrir-restaurante.mjs loja.json",
+
+  "restaurante": {
+    "nome": "Nome que aparece para o cliente",
+    "slug": "opcional — o endereço público. Sem ele, sai do nome.",
+    "razaoSocial": "Razão social, se houver",
+    "documento": "00.000.000/0000-00",
+    "descricao": "Uma linha que aparece na vitrine",
+    "telefone": "(62) 3000-0000",
+    "email": "contato@loja.com.br",
+
+    "cep": "74000-000",
+    "rua": "Rua tal",
+    "numero": "123",
+    "complemento": "Loja 2",
+    "bairro": "Setor tal",
+    "cidade": "Goiânia",
+    "estado": "GO",
+
+    "latitude": null,
+    "longitude": null,
+
+    "taxaDeEntrega": "7,00",
+    "entregaGratisAcimaDe": "60,00",
+    "pedidoMinimo": "20,00",
+    "raioDeEntregaKm": 6,
+    "minutosDePreparo": 30,
+    "minutosDeEntrega": 20,
+
+    "comissaoPercentual": 10,
+    "aceitaEntregadorDaPlataforma": false
+  },
+
+  "dono": {
+    "nome": "Nome de quem manda na loja",
+    "email": "dono@loja.com.br",
+    "telefone": "(62) 99000-0000"
+  },
+
+  "formasDePagamento": ["cash", "debit_card", "credit_card"],
+
+  "horarios": [
+    { "dia": 1, "abre": "18:00", "fecha": "23:00" },
+    { "dia": 2, "abre": "18:00", "fecha": "23:00" },
+    { "dia": 3, "abre": "18:00", "fecha": "23:00" },
+    { "dia": 4, "abre": "18:00", "fecha": "23:00" },
+    { "dia": 5, "abre": "18:00", "fecha": "23:59" },
+    { "dia": 6, "abre": "18:00", "fecha": "23:59" },
+    { "dia": 0, "abre": "18:00", "fecha": "23:00" }
+  ],
+
+  "cardapio": [
+    {
+      "categoria": "Lanches",
+      "itens": [
+        { "nome": "X-Salada", "descricao": "Pão, hambúrguer, queijo, alface e tomate", "preco": "24,90" },
+        { "nome": "X-Bacon", "descricao": "O X-Salada com bacon", "preco": "28,90" }
+      ]
+    },
+    {
+      "categoria": "Bebidas",
+      "itens": [{ "nome": "Refrigerante lata", "preco": "6,90" }]
+    }
+  ]
+}

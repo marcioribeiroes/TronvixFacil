@@ -71,9 +71,42 @@ npm run dev
 O projeto sobe mesmo sem Supabase configurado: as telas públicas renderizam e
 avisam o que falta, em vez de quebrar com erro de chave inválida.
 
+## Pôr um restaurante de verdade no ar
+
+Três passos, nesta ordem. A ordem importa: a limpeza vem depois do cadastro,
+para que nunca exista um momento com o banco vazio e um cliente esperando.
+
+```sh
+cp docs/abrir-restaurante.exemplo.json loja.json   # e preencha com os dados reais
+npm run loja:abrir -- loja.json                    # conta do dono, loja, cardápio
+npm run demo:limpar                                # mostra o que sairia
+npm run demo:limpar -- --confirmar                 # tira a demonstração do ar
+```
+
+`loja:abrir` cadastra o estabelecimento **já aprovado e fechado**, com o
+cardápio que vier no arquivo, e sorteia a senha do dono — mostrada uma única
+vez. O dono abre a loja no painel quando o cardápio estiver conferido; loja que
+nasce aberta com cardápio pela metade recebe pedido que não consegue atender.
+
+Quem chega sozinho continua pelo caminho normal: cadastro público, situação
+`pending`, e a plataforma aprova em `/admin/restaurantes`. O script é para o
+outro caso — alguém da plataforma abrindo a loja de um cliente que já fechou
+negócio.
+
+`demo:limpar` só apaga o que tem a marca da semente: estabelecimentos cujo id
+começa com `a0000000-0000-4000-8000-` (cadastro real nunca cai aí, o banco gera
+uuid aleatório) e a lista fixa de contas abaixo. Sem `--confirmar`, apenas
+lista. E ele **para** se encontrar um pedido de loja real feito por uma conta de
+demonstração — apagar a conta apagaria o cliente de uma venda de verdade.
+
 ## Usuários de teste
 
 Criados por `npm run db:semente`. Senha de todos: `tronvix123`.
+
+**Nenhum deles deve existir num servidor onde há um restaurante de verdade.**
+A senha está escrita aqui, o que é o mesmo que publicada, e uma das contas é
+administradora da plataforma inteira. É `npm run demo:limpar -- --confirmar`
+que resolve.
 
 | E-mail | Perfil |
 |---|---|
