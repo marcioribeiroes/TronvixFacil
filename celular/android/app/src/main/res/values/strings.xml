@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    O nome embaixo do ícone, na tela inicial e na gaveta.
+
+    Estava "tronvix_facil" — o nome do pacote do Flutter, com underline e sem
+    acento, exatamente como o `flutter create` deixa. O iOS já mostrava
+    "Tronvix Fácil"; o Android mostrava o nome de arquivo, e era o que o
+    cliente veria na loja de aplicativos.
+
+    Em recurso, e não no manifesto, porque é isto que se troca ao vender o
+    aplicativo com outra marca: um arquivo de uma linha em vez de uma edição no
+    meio do XML de configuração.
+-->
+<resources>
+    <string name="nome_do_aplicativo">Tronvix Fácil</string>
+</resources>

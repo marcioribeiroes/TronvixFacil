@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
-        android:label="tronvix_facil"
+        android:label="@string/nome_do_aplicativo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
