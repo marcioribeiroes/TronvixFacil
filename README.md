@@ -185,19 +185,41 @@ Medidas: **72mm** de largura (o papel de 80mm imprime 72; os 8mm restantes são
 a margem do mecanismo), fonte monoespaçada, **sem cinza** — impressora térmica
 queima o papel em vez de usar tinta, e cinza claro simplesmente não aparece.
 
-### Para sair sem o diálogo de impressão
+### Direto na térmica, sem diálogo nenhum
 
-O navegador sempre mostra a janela de impressão, e isso não se contorna por
-código. O que resolve é abrir o Chrome do balcão com a impressora térmica como
-padrão e a opção de impressão silenciosa:
+O botão **Ligar térmica** fala ESC/POS pela porta USB, sem passar pelo driver e
+sem abrir janela. O navegador pede uma autorização por vez que o Chrome é
+aberto — é proteção contra páginas que saem lendo aparelhos sozinhas, e não tem
+como contornar; depois disso a porta volta sem perguntar.
+
+ESC/POS é da Epson e virou padrão de fato: **Elgin, Bematech, Daruma** e os
+clones aceitam o mesmo conjunto básico, que é só o que o código usa. Comando
+exótico de um fabricante funciona numa impressora e trava outra.
+
+| | |
+|---|---|
+| Funciona | impressora USB que aparece como porta COM (o caso comum no Windows) |
+| Não funciona | impressora de rede — o navegador não abre porta TCP crua |
+| Não funciona | Firefox, Safari e celular — Web Serial é do Chrome e do Edge, em computador |
+
+Texto vai em **CP850**, a página de código que as térmicas brasileiras trazem de
+fábrica. UTF-8 não serve: a impressora lê um byte por caractere, e "ã" em UTF-8
+são dois bytes — sairiam dois símbolos errados.
+
+E o corte avança seis linhas antes: a lâmina fica acima da cabeça de impressão,
+e sem o avanço ela come as últimas linhas da comanda.
+
+### Sem a térmica ligada
+
+Cai no driver do sistema, que funciona com qualquer impressora e abre o diálogo.
+Para sair sem o diálogo por esse caminho, abra o Chrome do balcão assim:
 
 ```
 chrome.exe --kiosk-printing
 ```
 
-No atalho da área de trabalho: botão direito → Propriedades → acrescente
-` --kiosk-printing` no fim do campo *Destino*. A partir daí a comanda sai
-direto, sem ninguém tocar em nada.
+No atalho: botão direito → Propriedades → acrescente ` --kiosk-printing` no fim
+do campo *Destino*, com a térmica como impressora padrão do Windows.
 
 ## Aberto agora
 

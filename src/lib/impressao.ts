@@ -1,3 +1,6 @@
+import { bytesDaComanda } from "@/modules/painel/imprimir"
+import { enviarParaImpressora, impressoraLigada } from "@/lib/impressora"
+
 /**
  * Mandar a comanda para a impressora.
  *
@@ -16,7 +19,31 @@
 /** Quanto esperar a comanda carregar antes de desistir. */
 const LIMITE = 12_000
 
-export function imprimirComanda(pedidoId: string): Promise<boolean> {
+/**
+ * Imprime a comanda, pelo melhor caminho disponível.
+ *
+ * Primeiro tenta a impressora térmica ligada na porta — sai sem janela nenhuma,
+ * que é o que o balcão precisa. Se não houver, cai no driver do sistema, que
+ * funciona com qualquer impressora e abre o diálogo (ou não, se o Chrome
+ * estiver com --kiosk-printing).
+ */
+export async function imprimirComanda(
+  pedidoId: string,
+  colunas = 48,
+): Promise<boolean> {
+  if (impressoraLigada()) {
+    const r = await bytesDaComanda(pedidoId, colunas)
+    if (r.ok) {
+      const fita = Uint8Array.from(atob(r.fita), (c) => c.charCodeAt(0))
+      if (await enviarParaImpressora(fita)) return true
+    }
+    // Falhou na porta — cabo solto, papel acabado, outro programa segurando a
+    // porta. Cai para o driver em vez de perder a comanda.
+  }
+  return imprimirPeloDriver(pedidoId)
+}
+
+function imprimirPeloDriver(pedidoId: string): Promise<boolean> {
   return new Promise((resolver) => {
     const quadro = document.createElement("iframe")
     quadro.style.position = "fixed"

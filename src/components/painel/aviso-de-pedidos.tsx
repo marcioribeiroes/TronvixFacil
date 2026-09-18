@@ -6,6 +6,7 @@ import { Bell, BellOff, BellRing,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { ImpressoraTermica } from "@/components/painel/impressora-termica"
 import {
   removerInscricaoDePush,
   salvarInscricaoDePush,
@@ -152,6 +153,8 @@ export function AvisoDePedidos({
       </span>
 
       <div className="flex flex-wrap gap-2">
+        <ImpressoraTermica colunas={48} />
+
         <Button
           size="sm"
           variant={imprimindoSozinho ? "outline" : "ghost"}
