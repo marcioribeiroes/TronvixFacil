@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { ConfiguracoesDaLoja } from "@/components/painel/configuracoes-da-loja"
+import { FotosDaLoja } from "@/components/painel/fotos-da-loja"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirGestao } from "@/modules/auth/sessao"
 
@@ -14,7 +15,7 @@ export default async function PaginaDeConfiguracoes() {
     supabase
       .from("restaurants")
       .select(
-        "id, name, description, phone, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes, delivery_radius_km, accepts_scheduled_orders",
+        "id, name, description, phone, logo_url, cover_url, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes, delivery_radius_km, accepts_scheduled_orders",
       )
       .eq("id", vinculo.restauranteId)
       .single(),
@@ -41,6 +42,12 @@ export default async function PaginaDeConfiguracoes() {
           conta do pedido — quem aplica é o banco, no fechamento.
         </p>
       </div>
+
+      <FotosDaLoja
+        restauranteId={loja.id}
+        logoUrl={loja.logo_url}
+        capaUrl={loja.cover_url}
+      />
 
       <ConfiguracoesDaLoja
         loja={loja}

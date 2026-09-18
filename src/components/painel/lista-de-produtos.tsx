@@ -4,11 +4,13 @@ import Link from "next/link"
 import { useState, useTransition } from "react"
 import { Pencil, Plus, Star, Trash2 } from "lucide-react"
 
+import { EnviarImagem } from "@/components/painel/enviar-imagem"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatarReais, formatarValor } from "@/lib/dinheiro"
+import { MEDIDA_DO_PRODUTO } from "@/lib/imagem"
 import {
   mudarDisponibilidade,
   removerProduto,
@@ -21,6 +23,7 @@ type Produto = {
   name: string
   description: string | null
   price_cents: number
+  image_url: string | null
   promo_price_cents: number | null
   promo_ends_at: string | null
   is_available: boolean
@@ -35,10 +38,12 @@ type Categoria = { id: string; nome: string }
 export function ListaDeProdutos({
   categorias,
   produtos,
+  restauranteId,
   podeGerenciar,
 }: {
   categorias: Categoria[]
   produtos: Produto[]
+  restauranteId: string
   podeGerenciar: boolean
 }) {
   const [editando, setEditando] = useState<Produto | "novo" | null>(null)
@@ -75,6 +80,7 @@ export function ListaDeProdutos({
 
       {editando ? (
         <FormularioDeProduto
+          restauranteId={restauranteId}
           categorias={categorias}
           produto={editando === "novo" ? null : editando}
           aoFechar={() => setEditando(null)}
@@ -208,10 +214,12 @@ function LinhaDoProduto({
 function FormularioDeProduto({
   categorias,
   produto,
+  restauranteId,
   aoFechar,
 }: {
   categorias: Categoria[]
   produto: Produto | null
+  restauranteId: string
   aoFechar: () => void
 }) {
   const [enviando, iniciar] = useTransition()
@@ -232,6 +240,11 @@ function FormularioDeProduto({
   const [controlaEstoque, setControlaEstoque] = useState(produto?.track_stock ?? false)
   const [estoque, setEstoque] = useState(String(produto?.stock_quantity ?? 0))
 
+  // A foto entra no balde na hora de escolher, mas só vira do produto quando o
+  // formulário é salvo. Produto novo ainda não tem id quando a foto sobe — e
+  // amarrar a foto a um id que não existe seria inventar um passo a mais.
+  const [imagemUrl, setImagemUrl] = useState<string | null>(produto?.image_url ?? null)
+
   function salvar() {
     setErro(null)
     iniciar(async () => {
@@ -247,6 +260,7 @@ function FormularioDeProduto({
         destaque,
         controlaEstoque,
         estoque,
+        imagemUrl,
       })
       if (r.ok) aoFechar()
       else setErro(r.erro)
@@ -258,6 +272,24 @@ function FormularioDeProduto({
       <h2 className="font-bold">{produto ? `Editar ${produto.name}` : "Novo produto"}</h2>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Label>Foto</Label>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Produto com foto vende mais. É a primeira coisa que o cliente olha.
+          </p>
+          <EnviarImagem
+            restauranteId={restauranteId}
+            pasta="produtos/foto"
+            medida={MEDIDA_DO_PRODUTO}
+            urlAtual={imagemUrl}
+            formato="largo"
+            aoTrocar={async (url: string | null) => {
+              setImagemUrl(url)
+              return { ok: true }
+            }}
+          />
+        </div>
+
         <div className="sm:col-span-2">
           <Label htmlFor="nome">Nome</Label>
           <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} />

@@ -184,3 +184,35 @@ export async function aceitarEntregadorDaPlataforma(
   revalidatePath("/painel/entregas")
   return { ok: true }
 }
+
+/**
+ * Guarda a URL da logo ou da capa.
+ *
+ * O arquivo ja esta no balde quando isto roda: quem enviou foi o navegador,
+ * com a sessao da pessoa, e a politica do balde ja recusou quem nao gerencia a
+ * loja. Aqui so se grava o endereco.
+ *
+ * A foto antiga fica no balde. Apagar exigiria guardar o caminho anterior e
+ * lidar com o caso de duas abas trocando a foto ao mesmo tempo; o custo de
+ * alguns kilobytes parados e menor que o de apagar a foto errada.
+ */
+export async function salvarImagemDaLoja(
+  qual: "logo" | "capa",
+  url: string | null,
+): Promise<ResultadoDaAcao> {
+  const { vinculo } = await exigirGestao()
+  const supabase = await criarClienteDoServidor()
+
+  const { error } = await supabase
+    .from("restaurants")
+    .update(qual === "logo" ? { logo_url: url } : { cover_url: url })
+    .eq("id", vinculo.restauranteId)
+
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/configuracoes")
+  revalidatePath("/painel")
+  revalidatePath("/")
+  revalidatePath(`/restaurante/${vinculo.slug}`)
+  return { ok: true }
+}

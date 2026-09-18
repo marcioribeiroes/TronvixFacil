@@ -20,7 +20,7 @@ export default async function PaginaDeProdutos() {
     supabase
       .from("products")
       .select(
-        "id, category_id, name, description, price_cents, promo_price_cents, promo_ends_at, is_available, is_featured, track_stock, stock_quantity, sold_count",
+        "id, category_id, name, description, image_url, price_cents, promo_price_cents, promo_ends_at, is_available, is_featured, track_stock, stock_quantity, sold_count",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .is("deleted_at", null)
@@ -37,6 +37,7 @@ export default async function PaginaDeProdutos() {
       </div>
 
       <ListaDeProdutos
+        restauranteId={vinculo.restauranteId}
         categorias={(categorias ?? []).map((c) => ({ id: c.id, nome: c.name }))}
         produtos={produtos ?? []}
         podeGerenciar={vinculo.cargo !== "staff"}

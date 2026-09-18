@@ -191,10 +191,103 @@ export function FilaDePedidos({
   return (
     <div className="space-y-4">
       {aviso}
-      <div className="grid gap-4 xl:grid-cols-2">
-        {pedidos.map((p) => (
-          <CartaoDoPedido key={p.id} pedido={p} />
-        ))}
+      <Quadro pedidos={pedidos} />
+    </div>
+  )
+}
+
+/**
+ * As colunas do quadro.
+ *
+ * A ordem e a do trabalho, da esquerda para a direita: chega, aceita, faz,
+ * fica pronto, sai. Um pedido anda uma coluna por vez, e a coluna em que ele
+ * esta diz o que falta fazer com ele.
+ *
+ * "Saiu" junta entrega na rua e pedido ja servido na mesa: das duas, o que o
+ * balcao precisa saber e a mesma coisa — este ja nao esta na minha mao.
+ */
+const COLUNAS = [
+  {
+    chave: "recebido",
+    titulo: "Chegou",
+    detalhe: "esperando você aceitar",
+    situacoes: ["awaiting_payment", "received"] as SituacaoDoPedido[],
+    urgente: true,
+  },
+  {
+    chave: "aceito",
+    titulo: "Aceito",
+    detalhe: "na fila da cozinha",
+    situacoes: ["confirmed"] as SituacaoDoPedido[],
+    urgente: false,
+  },
+  {
+    chave: "preparo",
+    titulo: "Em preparo",
+    detalhe: "no fogo",
+    situacoes: ["preparing"] as SituacaoDoPedido[],
+    urgente: false,
+  },
+  {
+    chave: "pronto",
+    titulo: "Pronto",
+    detalhe: "esperando sair",
+    situacoes: ["ready"] as SituacaoDoPedido[],
+    urgente: true,
+  },
+  {
+    chave: "saiu",
+    titulo: "Saiu",
+    detalhe: "na rua ou na mesa",
+    situacoes: ["out_for_delivery"] as SituacaoDoPedido[],
+    urgente: false,
+  },
+] as const
+
+function Quadro({ pedidos }: { pedidos: PedidoDaFila[] }) {
+  return (
+    // Rolagem horizontal, e nao colunas que encolhem: cinco colunas espremidas
+    // num monitor de balcao viram cinco tiras ilegiveis. Quem tem tela larga ve
+    // tudo; quem nao tem, arrasta.
+    <div className="-mx-4 overflow-x-auto px-4 pb-2 md:-mx-6 md:px-6">
+      <div className="flex min-w-max gap-3">
+        {COLUNAS.map((coluna) => {
+          const daColuna = pedidos.filter((p) =>
+            coluna.situacoes.includes(p.status as SituacaoDoPedido),
+          )
+
+          return (
+            <section key={coluna.chave} className="w-[19rem] shrink-0">
+              <header className="flex items-baseline gap-2 px-1 pb-2">
+                <h2 className="text-sm font-bold uppercase tracking-wide">{coluna.titulo}</h2>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    daColuna.length > 0 && coluna.urgente
+                      ? "bg-marca text-white"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {daColuna.length}
+                </span>
+                <span className="truncate text-[11px] text-muted-foreground">
+                  {coluna.detalhe}
+                </span>
+              </header>
+
+              <div className="space-y-3 rounded-xl bg-muted/50 p-2">
+                {daColuna.map((p) => (
+                  <CartaoDoPedido key={p.id} pedido={p} />
+                ))}
+
+                {daColuna.length === 0 ? (
+                  <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                    vazio
+                  </p>
+                ) : null}
+              </div>
+            </section>
+          )
+        })}
       </div>
     </div>
   )

@@ -58,6 +58,44 @@ baixa, etiqueta riscada, celular velho — a mesma tela aceita o código impress
 embaixo do QR, escolhido sem `i`, `l`, `o`, `0` e `1` justamente para ser ditado
 sem confusão.
 
+## Fotos
+
+Um balde público no Storage (`imagens`), com a pasta nomeada pelo id do
+estabelecimento:
+
+```
+imagens/<restaurante>/logo-<momento>.jpg
+imagens/<restaurante>/capa-<momento>.jpg
+imagens/<restaurante>/produtos/foto-<momento>.jpg
+```
+
+Público porque foto de cardápio **é** pública — ela aparece para quem nem tem
+conta. O que não é público é a escrita: a política exige que quem envia gerencie
+o estabelecimento **da pasta**. Sem isso, qualquer pessoa autenticada trocaria a
+logo de qualquer loja.
+
+O arquivo vai do navegador direto para o balde, com a sessão da pessoa — não
+passa pelo servidor do Next, que dobraria a banda e poria um limite de corpo de
+requisição no caminho de uma foto de celular. Antes de subir, a imagem é
+reduzida no próprio navegador (logo 512px, produto 1200px, capa 1600px).
+
+O nome carrega o momento de propósito: sobrescrever o mesmo caminho deixa a foto
+velha em cache de CDN e de navegador, e o dono trocaria a logo sem ver diferença.
+
+## O quadro de pedidos
+
+`/painel/pedidos` é um Kanban, na ordem do trabalho:
+
+**Chegou** → **Aceito** → **Em preparo** → **Pronto** → **Saiu**
+
+Cada cartão diz quem pediu, para onde vai (endereço e bairro, mesa, ou balcão),
+o que tem dentro, como se paga, e há quantos minutos está esperando. Um pedido
+anda uma coluna por vez, e a coluna em que ele está diz o que falta fazer com
+ele.
+
+As colunas rolam na horizontal em vez de encolher: cinco colunas espremidas num
+monitor de balcão viram cinco tiras ilegíveis.
+
 ## Aberto agora
 
 Duas coisas fecham a loja, e qualquer uma basta:

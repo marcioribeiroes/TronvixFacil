@@ -119,6 +119,11 @@ export async function salvarProduto(dados: {
   destaque: boolean
   controlaEstoque: boolean
   estoque?: string
+  /**
+   * A foto já está no balde quando isto roda — quem enviou foi o navegador,
+   * com a sessão da pessoa. Aqui só se grava o endereço.
+   */
+  imagemUrl?: string | null
 }): Promise<ResultadoDaAcao> {
   const { vinculo } = await exigirGestao()
   const supabase = await criarClienteDoServidor()
@@ -162,6 +167,7 @@ export async function salvarProduto(dados: {
     promo_ends_at: promo !== null && dados.promocaoTerminaEm
       ? new Date(dados.promocaoTerminaEm).toISOString()
       : null,
+    image_url: dados.imagemUrl ?? null,
     is_available: dados.disponivel,
     is_featured: dados.destaque,
     track_stock: dados.controlaEstoque,

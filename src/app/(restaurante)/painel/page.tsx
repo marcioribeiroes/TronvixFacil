@@ -55,7 +55,9 @@ export default async function DashboardDoRestaurante() {
         .single(),
       supabase
         .from("orders")
-        .select("id, number, status, fulfillment, total_cents, customer_name, created_at")
+        .select(
+          "id, number, status, fulfillment, table_label, address_summary, address_district, total_cents, customer_name, created_at",
+        )
         .eq("restaurant_id", vinculo.restauranteId)
         .gte("created_at", seteDias.toISOString())
         .order("created_at", { ascending: false }),
@@ -267,14 +269,37 @@ export default async function DashboardDoRestaurante() {
         </section>
 
         <section>
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-            Na cozinha e na rua
-          </h2>
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+              Na cozinha e na rua
+            </h2>
+            <Link
+              href="/painel/pedidos"
+              className="text-xs font-semibold text-marca hover:underline"
+            >
+              Abrir o quadro →
+            </Link>
+          </div>
           <ul className="mt-3 divide-y rounded-xl border bg-card">
             {emAndamento.slice(0, 6).map((p) => (
               <li key={p.id} className="flex items-center gap-3 p-3 text-sm">
-                <span className="font-mono text-xs text-muted-foreground">#{p.number}</span>
-                <span className="min-w-0 flex-1 truncate font-medium">{p.customer_name}</span>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  #{p.number}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{p.customer_name}</span>
+                  {/* Para onde vai, não só quem pediu: é a informação que faz
+                      alguém decidir por qual começar. */}
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {p.fulfillment === "dine_in"
+                      ? (p.table_label ?? "Mesa")
+                      : p.fulfillment === "pickup"
+                        ? "Retirada no balcão"
+                        : [p.address_summary, p.address_district]
+                            .filter(Boolean)
+                            .join(" · ") || "Entrega"}
+                  </span>
+                </span>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {horaCurta(p.created_at)}
                 </span>
