@@ -1,0 +1,10 @@
+# A ficha da App Store mora em fastlane/metadata/, e as capturas em
+# fastlane/screenshots/. O que estiver escrito aqui vale para todos os idiomas.
+app_identifier("br.com.tronvix.tronvixFacil")
+primary_category("FOOD_AND_DRINK")
+copyright("#{Time.now.year} Tronvix")
+
+# Estes três a Apple recusa em branco. O de privacidade precisa ser a URL
+# pública da política — a mesma que a Play exige.
+# privacy_url("https://SEU-DOMINIO/privacidade")
+# support_url("https://SEU-DOMINIO")

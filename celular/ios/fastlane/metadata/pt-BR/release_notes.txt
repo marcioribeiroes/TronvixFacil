@@ -1,0 +1,1 @@
+Primeira versão. Delivery e pedido na mesa pelo QR Code, pagamento em Pix, cartão ou dinheiro, e acompanhamento do pedido até a porta.

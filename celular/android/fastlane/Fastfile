@@ -1,0 +1,78 @@
+# Envio para a Google Play.
+#
+# Existe para que subir uma versão seja um comando, e não vinte cliques no
+# Console — vinte cliques são vinte chances de subir a ficha de ontem com o
+# aplicativo de hoje.
+#
+# Antes de usar, uma vez só:
+#
+#   1. No Play Console, crie o app `br.com.tronvix.tronvix_facil`. A API NÃO
+#      cria aplicativo novo: ela só publica em um que já existe.
+#   2. Play Console > Configurações > Acesso à API > vincular um projeto do
+#      Google Cloud > criar conta de serviço > baixar o JSON.
+#   3. De volta ao Console, dê à conta de serviço a permissão
+#      "Administrador de versões" (Release manager).
+#   4. Guarde o JSON FORA do repositório e aponte:
+#
+#        export PLAY_JSON_KEY=~/.chaves/tronvix-play.json
+#
+# Depois disso:
+#
+#   fastlane conferir   # valida a chave e mostra o que está publicado
+#   fastlane interno    # sobe o .aab para o teste interno (não vai ao público)
+#   fastlane producao   # promove para produção, com a ficha e as imagens
+#
+# O que a API NÃO faz, e continua sendo no navegador: o formulário de
+# Segurança dos Dados, o questionário de classificação de conteúdo, o público-
+# alvo e o envio da primeira revisão. Está tudo escrito, campo a campo, em
+# docs/google-play.md.
+
+default_platform(:android)
+
+AAB = "../build/app/outputs/bundle/release/app-release.aab"
+
+platform :android do
+  desc "Confere se a chave funciona e diz o que já está publicado"
+  lane :conferir do
+    versoes = google_play_track_version_codes(track: "internal")
+    UI.success("Chave aceita. Versões no teste interno: #{versoes.inspect}")
+  end
+
+  desc "Sobe o pacote para o teste interno"
+  lane :interno do
+    conferir_o_pacote
+    upload_to_play_store(
+      track: "internal",
+      aab: AAB,
+      release_status: "draft",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Publica em produção, com ficha e imagens"
+  lane :producao do
+    conferir_o_pacote
+    upload_to_play_store(
+      track: "production",
+      aab: AAB,
+      # Rascunho de propósito: o envio para revisão é um clique humano. Um
+      # `fastlane` que publica sozinho para o público é um acidente esperando
+      # o dia em que alguém rodar o comando errado.
+      release_status: "draft",
+      metadata_path: "./fastlane/metadata/android",
+    )
+  end
+end
+
+# O pacote precisa existir e ser o de agora. Subir o .aab de três dias atrás,
+# compilado antes da última correção, é um erro silencioso: a Play aceita.
+def conferir_o_pacote
+  caminho = File.expand_path(AAB, __dir__)
+  UI.user_error!("Não achei #{caminho}. Rode o build antes:\n" \
+    "  flutter build appbundle --release --dart-define=...") unless File.exist?(caminho)
+
+  idade = ((Time.now - File.mtime(caminho)) / 3600).round
+  UI.important("O pacote tem #{idade}h. Recompile se houve mudança desde então.") if idade > 6
+end

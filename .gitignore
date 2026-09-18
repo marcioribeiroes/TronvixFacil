@@ -47,3 +47,11 @@ supabase/.temp
 celular/android/key.properties
 celular/android/app/*.jks
 celular/android/app/*.keystore
+
+# Credenciais de publicação nas lojas. Nunca entram no Git: uma chave de
+# conta de serviço da Play publica em nome da empresa, e uma chave da App
+# Store Connect faz o mesmo na Apple.
+celular/android/fastlane/chave-da-play.json
+**/*.p8
+fastlane/report.xml
+**/fastlane/README.md

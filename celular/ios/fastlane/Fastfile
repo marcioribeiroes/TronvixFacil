@@ -1,0 +1,89 @@
+# Envio para a App Store.
+#
+# Antes de usar, uma vez só:
+#
+#   1. App Store Connect > Usuários e Acesso > Integrações > Chaves da API
+#      > gerar uma chave com função "App Manager". Baixe o .p8 (só dá para
+#      baixar UMA vez) e anote o Key ID e o Issuer ID.
+#   2. Guarde o .p8 FORA do repositório e aponte:
+#
+#        export ASC_KEY_ID=XXXXXXXXXX
+#        export ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+#        export ASC_KEY_P8=~/.chaves/AuthKey_XXXXXXXXXX.p8
+#
+# Depois:
+#
+#   fastlane conferir   # valida a chave e diz o que a Apple já conhece
+#   fastlane beta       # compila, assina e sobe para o TestFlight
+#   fastlane loja       # sobe a ficha (textos e capturas), sem enviar a revisão
+#
+# O envio da revisão continua sendo um clique humano no App Store Connect, de
+# propósito: `fastlane` que publica sozinho é um acidente esperando o dia em
+# que alguém rodar o comando errado.
+
+default_platform(:ios)
+
+APP = "br.com.tronvix.tronvixFacil"
+
+def chave
+  app_store_connect_api_key(
+    key_id: ENV.fetch("ASC_KEY_ID"),
+    issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+    key_filepath: File.expand_path(ENV.fetch("ASC_KEY_P8")),
+    in_house: false,
+  )
+end
+
+platform :ios do
+  desc "Confere se a chave funciona"
+  lane :conferir do
+    api = chave
+    app = Spaceship::ConnectAPI::App.find(APP)
+    if app
+      UI.success("Chave aceita. O app #{APP} já existe no App Store Connect.")
+    else
+      UI.important("Chave aceita, mas #{APP} ainda não existe lá. " \
+        "Rode `fastlane criar` para registrá-lo.")
+    end
+    api
+  end
+
+  desc "Registra o app no App Store Connect e o identificador no Developer"
+  lane :criar do
+    produce(
+      api_key: chave,
+      app_identifier: APP,
+      app_name: "Tronvix Fácil",
+      language: "Brazilian Portuguese",
+      app_version: "1.0.0",
+      sku: "tronvix-facil-br",
+    )
+  end
+
+  desc "Compila, assina e sobe para o TestFlight"
+  lane :beta do
+    api = chave
+    sync_code_signing(api_key: api, type: "appstore", app_identifier: APP, readonly: false)
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      export_method: "app-store",
+      configuration: "Release",
+    )
+    upload_to_testflight(api_key: api, skip_waiting_for_build_processing: true)
+  end
+
+  desc "Sobe a ficha da loja: textos e capturas"
+  lane :loja do
+    deliver(
+      api_key: chave,
+      app_identifier: APP,
+      # Nada é enviado para revisão por aqui.
+      submit_for_review: false,
+      automatic_release: false,
+      force: true,
+      skip_binary_upload: true,
+      precheck_include_in_app_purchases: false,
+    )
+  end
+end
