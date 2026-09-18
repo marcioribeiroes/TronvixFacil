@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 import { FormularioDeLogin } from "@/components/auth/formulario-de-login"
-import { LogoTronvixFacil } from "@/components/marca/logo"
 import { AvisoDeConfiguracao } from "@/components/aviso-de-configuracao"
 import { supabaseConfigurado } from "@/lib/ambiente"
 
@@ -15,10 +14,6 @@ export default async function PaginaDeLogin({ searchParams }: PageProps<"/entrar
 
   return (
     <div className="space-y-8">
-      <div className="lg:hidden">
-        <LogoTronvixFacil tamanho="md" />
-      </div>
-
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Acesse sua conta</h1>
         <p className="mt-1 text-sm text-muted-foreground">

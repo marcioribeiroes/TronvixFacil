@@ -14,6 +14,20 @@ Quatro aplicativos, um deploy:
 | Entregador | `/entregas` | Quem leva |
 | Administração | `/admin` | Quem opera a plataforma |
 
+E, no celular, um aplicativo **nativo** em Flutter: [`celular/`](celular/).
+Android e iOS, mesmo banco, três frentes — cliente, balcão e entregador. Quem
+entra não escolhe qual abrir: o banco é que diz quem a pessoa é.
+
+O aplicativo tem dois modos, escolhidos por configuração: **multi**, com a
+vitrine de todos os estabelecimentos, e **unique**, o aplicativo de uma loja só.
+Marca e cores também vêm de configuração — o mesmo código vira o aplicativo de
+outro restaurante sem tocar em nenhuma tela.
+
+E o sistema **não gerencia a entrega**: o entregador é do estabelecimento, que o
+aprova e despacha as próprias corridas. Durante a corrida o cliente acompanha a
+moto no mapa — por uma função que devolve só a posição, nunca a linha do
+entregador.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 ·
@@ -72,6 +86,52 @@ Criados por `npm run db:semente`. Senha de todos: `tronvix123`.
 
 Os dois donos existem de propósito: é com eles que se confere, na prática, que
 um estabelecimento não enxerga os dados do outro.
+
+**Administrador de verdade** não sai daqui nem do cadastro público: o gatilho
+`app.handle_new_user` só aceita `customer` e `courier` vindos dos metadados —
+metadado de cadastro é escrito pelo cliente, e aceitar `platform_admin` ali
+deixava qualquer pessoa nascer dona da plataforma. A promoção é explícita:
+
+```sh
+npm run db:administrador -- pessoa@exemplo.com.br "Nome da Pessoa"
+```
+
+## Avisos de pedido
+
+Duas camadas, porque resolvem coisas diferentes:
+
+| | funciona quando | latência |
+|---|---|---|
+| som na fila | a aba está aberta | instantâneo |
+| **push** | **o navegador está fechado** | segundos |
+
+O push é Web Push de verdade: o navegador guarda a inscrição no serviço do
+fabricante (FCM, APNs, Mozilla) e um service worker mostra o aviso fora da aba.
+As peças:
+
+```
+pedido chega a "recebido"
+  → gatilho app.avisar_pedido (pg_net, assíncrono)
+  → Edge Function avisar-pedido (roda no Supabase)
+  → serviço de push do fabricante
+  → service worker → notificação
+```
+
+O gatilho é assíncrono de propósito: fechar um pedido **não** pode ficar mais
+lento — nem falhar — porque o aviso demorou.
+
+Para ligar num projeto:
+
+```sh
+node -e "console.log(require('web-push').generateVAPIDKeys())"   # gere o par
+# preencha NEXT_PUBLIC_VAPID_CHAVE_PUBLICA e VAPID_CHAVE_PRIVADA no .env.local
+supabase secrets set VAPID_CHAVE_PUBLICA=... VAPID_CHAVE_PRIVADA=... VAPID_CONTATO=...
+supabase functions deploy avisar-pedido --no-verify-jwt
+SUPABASE_DB_PASSWORD='...' npm run avisos:ligar
+```
+
+Sem o último passo o gatilho existe e não faz nada — de propósito: um banco de
+desenvolvimento recém-criado não deve tentar mandar push.
 
 ## Comandos
 

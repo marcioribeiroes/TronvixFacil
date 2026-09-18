@@ -30,42 +30,64 @@ on conflict (slug) do update set name = excluded.name, position = excluded.posit
 -- Estabelecimentos
 -- -----------------------------------------------------------------------------
 
+-- Enderecos e CEPs REAIS de Goiania, conferidos no ViaCEP. Os primeiros eram
+-- inventados, e isso deixou de ser inofensivo quando o cadastro de endereco
+-- passou a buscar o CEP: digitar um CEP da demonstracao devolvia "nao achei",
+-- e a demonstracao parecia quebrada.
+--
+-- As coordenadas continuam aproximadas, no bairro certo: servem para o mapa do
+-- entregador ter onde fincar o alfinete. Nao sao levantamento de campo, e
+-- nenhuma conta de distancia real deve depender delas.
 insert into restaurants (
   id, slug, name, description, status, is_open,
-  street, number, district, city, state, postal_code,
+  street, number, district, city, state, postal_code, latitude, longitude,
   phone, delivery_fee_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes,
   commission_bps, approved_at
 ) values
   ('a0000000-0000-4000-8000-000000000001', 'burger-house', 'Burger House',
    'Hambúrgueres artesanais, porções e bebidas.', 'approved', true,
-   'Rua das Palmeiras', '450', 'Setor Bueno', 'Goiânia', 'GO', '74210000',
+   'Rua T 30', '450', 'Setor Bueno', 'Goiânia', 'GO', '74210060',
+   -16.7045000, -49.2726000,
    '6232000001', 500, 2000, 25, 20, 1200, now()),
 
   ('a0000000-0000-4000-8000-000000000002', 'pizzaria-do-chef', 'Pizzaria do Chef',
    'Pizzas de forno a lenha, massa fina e recheio generoso.', 'approved', true,
-   'Avenida T-9', '1200', 'Jardim América', 'Goiânia', 'GO', '74255000',
+   'Avenida T 9', '1200', 'Jardim América', 'Goiânia', 'GO', '74255220',
+   -16.7089000, -49.2897000,
    '6232000002', 600, 3000, 35, 25, 1000, now()),
 
   ('a0000000-0000-4000-8000-000000000003', 'lanchonete-do-ze', 'Lanchonete do Zé',
    'O lanche de sempre, do jeito que você gosta.', 'approved', true,
-   'Rua 84', '77', 'Setor Sul', 'Goiânia', 'GO', '74083000',
+   'Rua 84', '77', 'Setor Sul', 'Goiânia', 'GO', '74080959',
+   -16.6910000, -49.2610000,
    '6232000003', 400, 1500, 20, 15, 1000, now()),
 
   ('a0000000-0000-4000-8000-000000000004', 'acai-mania', 'Açaí Mania',
    'Açaí cremoso, montado do seu jeito.', 'approved', true,
-   'Avenida Anhanguera', '3300', 'Setor Central', 'Goiânia', 'GO', '74035000',
+   'Avenida Anhanguera', '3300', 'Setor Central', 'Goiânia', 'GO', '74043906',
+   -16.6780000, -49.2560000,
    '6232000004', 450, 1800, 15, 20, 1000, now()),
 
   -- Fica pendente de proposito: e com ele que a fila de aprovacao do painel
   -- administrativo tem o que mostrar.
   ('a0000000-0000-4000-8000-000000000005', 'sabor-e-cia', 'Sabor & Cia',
    'Comida caseira, marmitas e pratos executivos.', 'pending', false,
-   'Rua 1004', '15', 'Setor Pedro Ludovico', 'Goiânia', 'GO', '74820000',
+   'Rua 1004', '15', 'Setor Pedro Ludovico', 'Goiânia', 'GO', '74820170',
+   -16.7180000, -49.2620000,
    '6232000005', 550, 2500, 30, 20, 1000, null)
+-- Semear de novo corrige o que estava errado: as coordenadas entram aqui
+-- porque um alfinete no lugar errado, corrigido no arquivo, precisa chegar a
+-- um banco que ja foi semeado.
 on conflict (id) do update set
   name = excluded.name,
   description = excluded.description,
-  status = excluded.status;
+  status = excluded.status,
+  street = excluded.street,
+  number = excluded.number,
+  district = excluded.district,
+  postal_code = excluded.postal_code,
+  latitude = excluded.latitude,
+  longitude = excluded.longitude;
 
 -- Vitrine: em quais categorias cada um aparece
 insert into restaurant_platform_categories (restaurant_id, category_id)
