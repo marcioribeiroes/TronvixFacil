@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 30   Enums: 14
+// Tabelas: 31   Enums: 14   Funcoes: 4
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -561,6 +561,7 @@ export interface Database {
           created_at: string
           updated_at: string
           deleted_at: string | null
+          restaurant_id: string | null
         }
         Insert: {
           id?: string
@@ -581,6 +582,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           deleted_at?: string | null
+          restaurant_id?: string | null
         }
         Update: {
           id?: string
@@ -601,6 +603,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           deleted_at?: string | null
+          restaurant_id?: string | null
         }
         Relationships: [
           {
@@ -608,6 +611,13 @@ export interface Database {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "couriers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
           {
@@ -1292,6 +1302,47 @@ export interface Database {
           }
         ]
       }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          descricao: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          descricao?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          descricao?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       restaurant_hours: {
         Row: {
           id: string
@@ -1504,6 +1555,7 @@ export interface Database {
           created_at: string
           updated_at: string
           deleted_at: string | null
+          accepts_platform_couriers: boolean
         }
         Insert: {
           id?: string
@@ -1542,6 +1594,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           deleted_at?: string | null
+          accepts_platform_couriers?: boolean
         }
         Update: {
           id?: string
@@ -1580,6 +1633,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           deleted_at?: string | null
+          accepts_platform_couriers?: boolean
         }
         Relationships: [
           {
@@ -1735,7 +1789,44 @@ export interface Database {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      fechar_pedido: {
+        Args: {
+          p_cart_id: string
+          p_fulfillment: Database["public"]["Enums"]["fulfillment_type"]
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_payment_timing: Database["public"]["Enums"]["payment_timing"]
+          p_address_id?: string
+          p_change_for_cents?: number
+          p_coupon_code?: string
+          p_notes?: string
+          p_scheduled_for?: string
+        }
+        Returns: string
+      }
+      onde_esta_o_entregador: {
+        Args: {
+          p_order: string
+        }
+        Returns: Json
+      }
+      publicar_posicao: {
+        Args: {
+          p_latitude: number
+          p_longitude: number
+        }
+        Returns: undefined
+      }
+      simular_cupom: {
+        Args: {
+          p_code: string
+          p_restaurant: string
+          p_subtotal_cents: number
+          p_delivery_fee_cents: number
+        }
+        Returns: Json
+      }
+    }
     Enums: {
       coupon_scope: "platform" | "restaurant"
       courier_availability: "offline" | "online" | "on_delivery"

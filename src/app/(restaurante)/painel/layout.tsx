@@ -1,17 +1,3 @@
-import {
-  BarChart3,
-  Bike,
-  ClipboardList,
-  LayoutDashboard,
-  ListOrdered,
-  Package,
-  PlusSquare,
-  Settings,
-  Tag,
-  Users,
-  UtensilsCrossed,
-} from "lucide-react"
-
 import { SidebarDoPainel, type ItemDeMenu } from "@/components/navegacao/sidebar-do-painel"
 import { CabecalhoDoPainel } from "@/components/navegacao/cabecalho-do-painel"
 import { exigirVinculo } from "@/modules/auth/sessao"
@@ -26,17 +12,17 @@ import { exigirVinculo } from "@/modules/auth/sessao"
  */
 
 const MENU_DA_GESTAO: ItemDeMenu[] = [
-  { rotulo: "Dashboard", href: "/painel", icone: LayoutDashboard },
-  { rotulo: "Pedidos", href: "/painel/pedidos", icone: ClipboardList },
-  { rotulo: "Cardápio", href: "/painel/cardapio", icone: UtensilsCrossed },
-  { rotulo: "Categorias", href: "/painel/categorias", icone: ListOrdered },
-  { rotulo: "Produtos", href: "/painel/produtos", icone: Package },
-  { rotulo: "Adicionais", href: "/painel/adicionais", icone: PlusSquare },
-  { rotulo: "Promoções", href: "/painel/promocoes", icone: Tag },
-  { rotulo: "Clientes", href: "/painel/clientes", icone: Users },
-  { rotulo: "Entregas", href: "/painel/entregas", icone: Bike },
-  { rotulo: "Relatórios", href: "/painel/relatorios", icone: BarChart3 },
-  { rotulo: "Configurações", href: "/painel/configuracoes", icone: Settings },
+  { rotulo: "Dashboard", href: "/painel", icone: "dashboard" },
+  { rotulo: "Pedidos", href: "/painel/pedidos", icone: "comanda" },
+  { rotulo: "Cardápio", href: "/painel/cardapio", icone: "cardapio" },
+  { rotulo: "Categorias", href: "/painel/categorias", icone: "categorias" },
+  { rotulo: "Produtos", href: "/painel/produtos", icone: "produtos" },
+  { rotulo: "Adicionais", href: "/painel/adicionais", icone: "adicionais" },
+  { rotulo: "Promoções", href: "/painel/promocoes", icone: "cupons" },
+  { rotulo: "Clientes", href: "/painel/clientes", icone: "usuarios" },
+  { rotulo: "Entregas", href: "/painel/entregas", icone: "entregadores" },
+  { rotulo: "Relatórios", href: "/painel/relatorios", icone: "relatorios" },
+  { rotulo: "Configurações", href: "/painel/configuracoes", icone: "configuracoes" },
 ]
 
 /**

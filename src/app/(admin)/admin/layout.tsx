@@ -1,35 +1,20 @@
-import {
-  BarChart3,
-  Bike,
-  Building2,
-  DollarSign,
-  Image as ImageIcon,
-  LayoutDashboard,
-  ListOrdered,
-  Percent,
-  Receipt,
-  Settings,
-  Tag,
-  Users,
-} from "lucide-react"
-
 import { SidebarDoPainel, type ItemDeMenu } from "@/components/navegacao/sidebar-do-painel"
 import { CabecalhoDoPainel } from "@/components/navegacao/cabecalho-do-painel"
 import { exigirAdminDaPlataforma } from "@/modules/auth/sessao"
 
 const MENU: ItemDeMenu[] = [
-  { rotulo: "Dashboard", href: "/admin", icone: LayoutDashboard },
-  { rotulo: "Restaurantes", href: "/admin/restaurantes", icone: Building2 },
-  { rotulo: "Usuários", href: "/admin/usuarios", icone: Users },
-  { rotulo: "Entregadores", href: "/admin/entregadores", icone: Bike },
-  { rotulo: "Pedidos", href: "/admin/pedidos", icone: Receipt },
-  { rotulo: "Financeiro", href: "/admin/financeiro", icone: DollarSign },
-  { rotulo: "Comissões", href: "/admin/comissoes", icone: Percent },
-  { rotulo: "Cupons", href: "/admin/cupons", icone: Tag },
-  { rotulo: "Banners", href: "/admin/banners", icone: ImageIcon },
-  { rotulo: "Categorias", href: "/admin/categorias", icone: ListOrdered },
-  { rotulo: "Relatórios", href: "/admin/relatorios", icone: BarChart3 },
-  { rotulo: "Configurações", href: "/admin/configuracoes", icone: Settings },
+  { rotulo: "Dashboard", href: "/admin", icone: "dashboard" },
+  { rotulo: "Restaurantes", href: "/admin/restaurantes", icone: "estabelecimentos" },
+  { rotulo: "Usuários", href: "/admin/usuarios", icone: "usuarios" },
+  { rotulo: "Entregadores", href: "/admin/entregadores", icone: "entregadores" },
+  { rotulo: "Pedidos", href: "/admin/pedidos", icone: "pedidos" },
+  { rotulo: "Financeiro", href: "/admin/financeiro", icone: "financeiro" },
+  { rotulo: "Comissões", href: "/admin/comissoes", icone: "comissoes" },
+  { rotulo: "Cupons", href: "/admin/cupons", icone: "cupons" },
+  { rotulo: "Banners", href: "/admin/banners", icone: "banners" },
+  { rotulo: "Categorias", href: "/admin/categorias", icone: "categorias" },
+  { rotulo: "Relatórios", href: "/admin/relatorios", icone: "relatorios" },
+  { rotulo: "Configurações", href: "/admin/configuracoes", icone: "configuracoes" },
 ]
 
 export default async function LayoutDaAdministracao({ children }: LayoutProps<"/admin">) {

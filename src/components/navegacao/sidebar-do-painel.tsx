@@ -2,16 +2,69 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LogOut, type LucideIcon } from "lucide-react"
+import {
+  BarChart3,
+  Bike,
+  Building2,
+  ClipboardList,
+  DollarSign,
+  Image as ImageIcon,
+  LayoutDashboard,
+  ListOrdered,
+  LogOut,
+  Package,
+  Percent,
+  PlusSquare,
+  Receipt,
+  Settings,
+  Tag,
+  Users,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react"
 
 import { LogoTronvixFacil } from "@/components/marca/logo"
 import { sair } from "@/modules/auth/acoes"
 import { cn } from "@/lib/utils"
 
+/**
+ * Os icones vivem AQUI, do lado do cliente, e o menu viaja com o nome deles.
+ *
+ * Nao e preciosismo: um componente de icone e uma funcao, e funcao nao
+ * atravessa a fronteira de Server Component para Client Component. Passando o
+ * componente direto, o React derruba a pagina inteira com
+ *
+ *   "Only plain objects can be passed to Client Components from Server
+ *    Components."
+ *
+ * Era o que acontecia com /admin e /painel: a rota respondia, o login
+ * funcionava, e a tela quebrava ao montar. String atravessa; funcao nao.
+ */
+const ICONES = {
+  dashboard: LayoutDashboard,
+  estabelecimentos: Building2,
+  usuarios: Users,
+  entregadores: Bike,
+  pedidos: Receipt,
+  comanda: ClipboardList,
+  financeiro: DollarSign,
+  comissoes: Percent,
+  cupons: Tag,
+  banners: ImageIcon,
+  categorias: ListOrdered,
+  relatorios: BarChart3,
+  configuracoes: Settings,
+  cardapio: UtensilsCrossed,
+  produtos: Package,
+  adicionais: PlusSquare,
+} as const satisfies Record<string, LucideIcon>
+
+export type NomeDoIcone = keyof typeof ICONES
+
 export type ItemDeMenu = {
   rotulo: string
   href: string
-  icone: LucideIcon
+  icone: NomeDoIcone
   /** Contador opcional (pedidos novos, por exemplo). */
   contador?: number
 }
@@ -54,7 +107,7 @@ export function SidebarDoPainel({
               ? caminho === item.href
               : caminho.startsWith(item.href)
 
-          const Icone = item.icone
+          const Icone = ICONES[item.icone]
 
           return (
             <Link
