@@ -31,6 +31,10 @@ class _TelaVitrineState extends State<TelaVitrine> {
   List<Restaurante> _restaurantes = const [];
   Pedido? _andando;
   String? _categoriaEscolhida;
+
+  /// O filtro de promoções fica ao lado de "Tudo", e não no meio das
+  /// categorias: ele não é um tipo de comida, é um motivo para escolher.
+  bool _somentePromocoes = false;
   bool _carregando = true;
   Object? _erro;
 
@@ -57,6 +61,7 @@ class _TelaVitrineState extends State<TelaVitrine> {
         Vitrine.restaurantes(
           busca: _busca.text,
           categoriaId: _categoriaEscolhida,
+          somentePromocoes: _somentePromocoes,
         ),
         // Um pedido a caminho é o motivo mais provável de alguém abrir o
         // aplicativo. Ele vem junto da vitrine e fica no topo.
@@ -90,8 +95,7 @@ class _TelaVitrineState extends State<TelaVitrine> {
                 SliverToBoxAdapter(child: _cabecalho()),
                 if (_andando != null)
                   SliverToBoxAdapter(child: _faixaDoPedido(_andando!)),
-                if (_categorias.isNotEmpty)
-                  SliverToBoxAdapter(child: _filtros()),
+                SliverToBoxAdapter(child: _filtros()),
                 if (_carregando)
                   const SliverFillRemaining(child: Carregando())
                 else if (_erro != null)
@@ -213,20 +217,42 @@ class _TelaVitrineState extends State<TelaVitrine> {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          itemCount: _categorias.length + 1,
+          // "Tudo" e "Promoções" vêm antes das categorias.
+          itemCount: _categorias.length + 2,
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (_, i) {
             if (i == 0) {
               return ChoiceChip(
                 label: const Text('Tudo'),
-                selected: _categoriaEscolhida == null,
+                // "Tudo" é o estado sem filtro nenhum — inclusive sem o de
+                // promoções. Deixá-lo aceso junto com outro seria dizer duas
+                // coisas contrárias na mesma barra.
+                selected: _categoriaEscolhida == null && !_somentePromocoes,
                 onSelected: (_) {
-                  setState(() => _categoriaEscolhida = null);
+                  setState(() {
+                    _categoriaEscolhida = null;
+                    _somentePromocoes = false;
+                  });
                   _carregar();
                 },
               );
             }
-            final c = _categorias[i - 1];
+            if (i == 1) {
+              return ChoiceChip(
+                avatar: Icon(
+                  Icons.local_offer_outlined,
+                  size: 18,
+                  color: _somentePromocoes ? Cores.sobreMarca : Cores.marca,
+                ),
+                label: const Text('Promoções'),
+                selected: _somentePromocoes,
+                onSelected: (escolhida) {
+                  setState(() => _somentePromocoes = escolhida);
+                  _carregar();
+                },
+              );
+            }
+            final c = _categorias[i - 2];
             return ChoiceChip(
               label: Text(c.nome),
               selected: _categoriaEscolhida == c.id,
@@ -299,18 +325,23 @@ class _CartaoDeRestaurante extends StatelessWidget {
         opacity: r.aberto ? 1 : 0.45,
         child: Foto(url: r.logoUrl, largura: 60, altura: 60, icone: Icons.storefront),
       ),
-      title: Row(
+      // Wrap, e não Row: com duas etiquetas o nome era espremido até virar
+      // "churrascaria espeto d…". O nome da loja é o que o cliente procura;
+      // as etiquetas descem de linha quando não couberem.
+      title: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
         children: [
-          Flexible(
-            child: Text(r.nome,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          ),
-          if (!r.aberto) ...[
-            const SizedBox(width: 8),
-            const Etiqueta('Fechado'),
-          ],
+          Text(r.nome,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          // A promoção vem antes de "fechado": é o motivo de olhar de novo mais
+          // tarde. Loja fechada com promoção continua sendo uma boa notícia.
+          if (r.temPromocao)
+            const Etiqueta('Promoção', cor: Cores.marca, forte: true),
+          if (!r.aberto) const Etiqueta('Fechado'),
         ],
       ),
       subtitle: Padding(

@@ -59,6 +59,10 @@ class Vitrine {
   static Future<List<Restaurante>> restaurantes({
     String? busca,
     String? categoriaId,
+    /// Só quem tem promoção valendo agora. Quem responde é o banco: cruzar no
+    /// celular exigiria baixar o cardápio de trinta lojas para descobrir que
+    /// duas têm.
+    bool somentePromocoes = false,
     int limite = 50,
   }) =>
       executar(() async {
@@ -67,8 +71,9 @@ class Vitrine {
         // aberta uma loja que só abre às 18h.
         var consulta = banco.from('restaurants').select(
               categoriaId == null
-                  ? '*, aberto_agora'
-                  : '*, aberto_agora, restaurant_platform_categories!inner(category_id)',
+                  ? '*, aberto_agora, tem_promocao'
+                  : '*, aberto_agora, tem_promocao, '
+                      'restaurant_platform_categories!inner(category_id)',
             );
 
         if (busca != null && busca.trim().isNotEmpty) {
@@ -79,6 +84,9 @@ class Vitrine {
             'restaurant_platform_categories.category_id',
             categoriaId,
           );
+        }
+        if (somentePromocoes) {
+          consulta = consulta.eq('tem_promocao', true);
         }
 
         final linhas = await consulta

@@ -58,6 +58,20 @@ baixa, etiqueta riscada, celular velho — a mesma tela aceita o código impress
 embaixo do QR, escolhido sem `i`, `l`, `o`, `0` e `1` justamente para ser ditado
 sem confusão.
 
+## Promoções na vitrine
+
+Ao lado de **Tudo**, um filtro **Promoções** — no aplicativo e na web. Quem
+responde "esta loja tem promoção agora?" é o banco, na coluna calculada
+`tem_promocao`: cruzar no celular exigiria baixar o cardápio de trinta lojas
+para descobrir que duas têm.
+
+A janela manda. Promoção que terminou ontem é preço cheio de novo, e a que
+começa amanhã ainda não vale — anunciar o contrário é o cliente chegando na
+tela e vendo outro valor. Produto indisponível também não conta: ninguém
+consegue comprar.
+
+As lojas com promoção aparecem marcadas na lista, mesmo sem o filtro ligado.
+
 ## Cancelar
 
 O cliente desiste **até a loja aceitar**. Depois disso a comida está sendo

@@ -75,6 +75,7 @@ class Restaurante {
     required this.slug,
     required this.nome,
     required this.aberto,
+    this.temPromocao = false,
     required this.taxaDeEntregaCentavos,
     required this.pedidoMinimoCentavos,
     required this.minutosDePreparo,
@@ -103,6 +104,10 @@ class Restaurante {
   /// Sem a coluna calculada no `select`, cai em `is_open`: melhor errar para o
   /// lado de uma tela que ainda funciona do que quebrar.
   final bool aberto;
+
+  /// Tem ao menos um produto em promoção valendo agora. Vem calculado do
+  /// banco, na coluna `tem_promocao`.
+  final bool temPromocao;
   final int taxaDeEntregaCentavos;
   final int pedidoMinimoCentavos;
   final int minutosDePreparo;
@@ -128,6 +133,7 @@ class Restaurante {
         slug: m['slug'] as String,
         nome: m['name'] as String,
         aberto: (m['aberto_agora'] as bool?) ?? (m['is_open'] as bool?) ?? false,
+        temPromocao: (m['tem_promocao'] as bool?) ?? false,
         taxaDeEntregaCentavos: _centavos(m['delivery_fee_cents']),
         pedidoMinimoCentavos: _centavos(m['min_order_cents']),
         minutosDePreparo: (m['avg_prep_minutes'] as int?) ?? 30,
