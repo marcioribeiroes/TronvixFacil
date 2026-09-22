@@ -42,6 +42,31 @@ platform :android do
     UI.success("Chave aceita. Versões no teste interno: #{versoes.inspect}")
   end
 
+  desc "Diz o que está publicado em cada faixa, e em que estado"
+  lane :faixas do
+    require "supply"
+    Supply.config = FastlaneCore::Configuration.create(
+      Supply::Options.available_options,
+      package_name: "br.com.tronvix.tronvix_facil",
+      json_key: ENV["PLAY_JSON_KEY"],
+      track: "internal",
+    )
+    cliente = Supply::Client.make_from_config
+    cliente.begin_edit(package_name: "br.com.tronvix.tronvix_facil")
+
+    %w[internal alpha beta production].each do |faixa|
+      versoes = cliente.track_releases(faixa)
+      if versoes.nil? || versoes.empty?
+        UI.message("#{faixa}: sem versão")
+      else
+        versoes.each do |v|
+          UI.success("#{faixa}: #{v.version_codes.inspect} — #{v.status}")
+        end
+      end
+    end
+    cliente.abort_current_edit
+  end
+
   desc "Sobe o pacote para a faixa fechada (Alpha), onde contam os 14 dias"
   lane :alpha do
     conferir_o_pacote

@@ -281,32 +281,45 @@ class _TelaProdutoState extends State<TelaProduto> {
           ),
         ),
         if (g.escolhaUnica)
-          // Um grupo de escolha única guarda no máximo um selecionado; o valor
-          // do grupo é o id que estiver marcado.
-          RadioGroup<String>(
-            groupValue: g.adicionais
-                .map((x) => x.id)
-                .where((id) => (_escolhidos[id] ?? 0) > 0)
-                .firstOrNull,
-            onChanged: (escolhido) => setState(() {
-              for (final x in g.adicionais) {
-                _escolhidos.remove(x.id);
-              }
-              if (escolhido != null) _escolhidos[escolhido] = 1;
-            }),
-            child: Column(
-              children: [
-                for (final a in g.adicionais)
-                  RadioListTile<String>(
-                    value: a.id,
+          // Escolha única, mas feita à mão em vez de `RadioGroup`: num grupo
+          // OPCIONAL, tocar de novo no que já está marcado precisa desmarcar,
+          // e rádio não volta para "nenhum" sozinho. Sem isso, quem tocasse
+          // sem querer em "Molho Mostarda" levava o molho para casa — a única
+          // saída era sair da tela e montar o item de novo.
+          //
+          // Em grupo obrigatório o toque repetido não faz nada: ali "nenhum"
+          // não é resposta válida, e apagar a escolha só deixaria a pessoa
+          // presa no botão desligado.
+          Column(
+            children: [
+              for (final a in g.adicionais)
+                Builder(builder: (_) {
+                  final marcado = (_escolhidos[a.id] ?? 0) > 0;
+                  return ListTile(
+                    leading: Icon(
+                      marcado
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: marcado ? Cores.marca : Cores.textoSuave,
+                    ),
                     title: Text(a.nome),
                     subtitle: a.precoCentavos == 0
                         ? null
                         : Text('+ ${emReais(a.precoCentavos)}',
                             style: const TextStyle(color: Cores.textoSuave)),
-                  ),
-              ],
-            ),
+                    onTap: () => setState(() {
+                      if (marcado) {
+                        if (!g.obrigatorio) _escolhidos.remove(a.id);
+                        return;
+                      }
+                      for (final x in g.adicionais) {
+                        _escolhidos.remove(x.id);
+                      }
+                      _escolhidos[a.id] = 1;
+                    }),
+                  );
+                }),
+            ],
           )
         else
           for (final a in g.adicionais)

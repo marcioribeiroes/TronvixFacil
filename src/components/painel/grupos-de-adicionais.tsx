@@ -136,6 +136,19 @@ export function GruposDeAdicionais({
                     inputMode="numeric"
                   />
                 </div>
+                {/* O que a regra vai virar, enquanto se digita. Sem isto, dá
+                    para escrever "Escolha até 10 itens" no nome e deixar o
+                    máximo em 1 sem perceber — o nome promete dez, o cardápio
+                    aceita um, e quem descobre é o cliente. */}
+                <p className="text-xs text-muted-foreground sm:col-span-4 sm:-mt-1">
+                  Esse grupo vai aceitar{" "}
+                  <strong>
+                    {obrigatorio
+                      ? `de 1 a ${Math.max(1, Number(maximo) || 1)}`
+                      : `até ${Math.max(1, Number(maximo) || 1)}`}
+                  </strong>{" "}
+                  {Math.max(1, Number(maximo) || 1) === 1 ? "opção" : "opções"} por item.
+                </p>
                 <label className="flex items-end gap-2 pb-2 text-sm">
                   <input
                     type="checkbox"
