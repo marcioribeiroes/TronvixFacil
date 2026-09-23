@@ -220,7 +220,13 @@ function tipoDeFuncao(nome, enums) {
 }
 
 function consultar() {
-  const bruto = execFileSync("psql", ["-d", BANCO, "-t", "-A", "-c", CONSULTA], {
+  // A consulta vai por stdin, e nao por `-c`, por causa do Windows: ali a
+  // linha de comando e entregue ao processo na codepage do sistema (CP1252), e
+  // os travessoes dos comentarios do SQL chegavam ao psql como o byte 0x97,
+  // que nao e UTF-8 valido. Por stdin os bytes sao os do arquivo, em qualquer
+  // sistema.
+  const bruto = execFileSync("psql", ["-d", BANCO, "-t", "-A", "-f", "-"], {
+    input: CONSULTA,
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
   })

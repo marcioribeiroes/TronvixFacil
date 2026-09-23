@@ -14,6 +14,11 @@ set -euo pipefail
 BANCO="${BANCO_DE_TESTE:-tronvix_facil_teste}"
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# As migracoes sao UTF-8. No Windows o psql assume a codepage do sistema
+# (WIN1252) e morre no primeiro acento; no macOS isto ja e o padrao e nao muda
+# nada. Sem esta linha, `npm run db:test` nao roda em maquina Windows.
+export PGCLIENTENCODING="${PGCLIENTENCODING:-UTF8}"
+
 if ! pg_isready -q; then
   echo "Nenhum Postgres respondendo em localhost:5432."
   echo "Suba um antes de rodar os testes. Com Homebrew:"
