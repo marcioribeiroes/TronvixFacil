@@ -112,15 +112,19 @@ class _TelaRestauranteState extends State<TelaRestaurante> {
                   // — e capa de restaurante é justamente onde há tijolo, prato
                   // e letreiro. O escuro entra só na metade de baixo, para não
                   // apagar a foto que a loja escolheu.
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.center,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Color(0x99000000)],
+                  //
+                  // Só quando há foto: sobre o cinza liso do lugar vazio ele
+                  // escureceria à toa, e ali o nome já se lê sem ajuda.
+                  if ((r.capaUrl ?? r.logoUrl) != null)
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.center,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Color(0x99000000)],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
