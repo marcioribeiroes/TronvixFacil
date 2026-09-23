@@ -18,7 +18,8 @@
     "db:administrador": "node scripts/criar-administrador.mjs",
     "avisos:ligar": "node scripts/ligar-avisos.mjs",
     "loja:abrir": "node scripts/abrir-restaurante.mjs",
-    "demo:limpar": "node scripts/limpar-demonstracao.mjs"
+    "demo:limpar": "node scripts/limpar-demonstracao.mjs",
+    "loja:coordenadas": "node scripts/preencher-coordenadas.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

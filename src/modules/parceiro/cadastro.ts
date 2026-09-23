@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { coordenadasDoCep } from "@/lib/geocodificar"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirUsuario } from "@/modules/auth/sessao"
 
@@ -78,6 +79,28 @@ export async function cadastrarEstabelecimento(dados: {
 
   const criado = data?.[0]
   if (!criado) return { ok: false, erro: "O cadastro não voltou do banco. Tente de novo." }
+
+  /**
+   * Onde a loja fica, a partir do CEP.
+   *
+   * Sem coordenada a corrida nasce sem distância, o mapa de coleta do
+   * entregador fica vazio e o raio de entrega não tem centro. Até aqui nenhuma
+   * tela escrevia esses campos — só a semente de demonstração — e toda loja de
+   * verdade nascia cega.
+   *
+   * Depois do cadastro, e não dentro dele, de propósito: é serviço externo, e
+   * ninguém pode deixar de abrir a loja porque a BrasilAPI está fora do ar.
+   * Falhando, a loja existe do mesmo jeito e a coordenada se resolve depois.
+   */
+  if (dados.cep) {
+    const onde = await coordenadasDoCep(dados.cep)
+    if (onde) {
+      await supabase
+        .from("restaurants")
+        .update({ latitude: onde.latitude, longitude: onde.longitude })
+        .eq("id", criado.id)
+    }
+  }
 
   revalidatePath("/painel")
   revalidatePath("/admin/restaurantes")
