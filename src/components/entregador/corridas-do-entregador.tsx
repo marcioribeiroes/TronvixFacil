@@ -46,6 +46,16 @@ export type CorridaNaTela = {
   situacaoDoPedido: SituacaoDoPedido
   /** Quando a loja prometeu que fica pronto. Nulo em corrida chamada no jeito antigo. */
   prontoEm: string | null
+  /**
+   * Da loja ate o cliente, em linha reta. Nulo quando o cliente nao deixou
+   * marcar o endereco no mapa — nao e defeito, e falta de coordenada.
+   */
+  distanciaKm: number | null
+}
+
+/** "400 m" ou "2.4 km" — espelho de distanciaKm, em celular/lib/formato.dart. */
+function emDistancia(km: number) {
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`
 }
 
 /**
@@ -172,6 +182,11 @@ export function CorridasDoEntregador({
             </p>
             <p className="text-lg font-bold text-marca">
               {formatarReais(minhaCorrida.ganhoCentavos)}
+              {minhaCorrida.distanciaKm !== null ? (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {emDistancia(minhaCorrida.distanciaKm)}
+                </span>
+              ) : null}
             </p>
           </div>
 
@@ -288,9 +303,19 @@ export function CorridasDoEntregador({
                     {c.enderecoDoRestaurante ?? "—"}
                   </p>
                 </div>
-                <p className="shrink-0 text-lg font-bold text-marca">
-                  {formatarReais(c.ganhoCentavos)}
-                </p>
+                {/* O valor e a distancia juntos: e a razao entre os dois que
+                    faz a corrida valer, e separados a pessoa aceita olhando so
+                    o dinheiro. Para quem pedala, a diferenca e o dia inteiro. */}
+                <div className="shrink-0 text-right">
+                  <p className="text-lg font-bold text-marca">
+                    {formatarReais(c.ganhoCentavos)}
+                  </p>
+                  {c.distanciaKm !== null ? (
+                    <p className="text-xs text-muted-foreground">
+                      {emDistancia(c.distanciaKm)} de percurso
+                    </p>
+                  ) : null}
+                </div>
               </div>
 
               <p className="mt-2 flex items-start gap-2 text-sm">

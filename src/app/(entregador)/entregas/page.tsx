@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Corridas" }
 
 /** O mesmo recorte que o aplicativo pede — as colunas que a tela usa, e só. */
 const CORRIDA_COMPLETA =
-  "id, status, courier_fee_cents, created_at, courier_id, orders(number, status, ready_forecast_at, total_cents, customer_name, customer_phone, address_summary, address_district, notes, restaurants(name, phone, street, number, district), payments(timing))"
+  "id, status, courier_fee_cents, distance_km, created_at, courier_id, orders(number, status, ready_forecast_at, total_cents, customer_name, customer_phone, address_summary, address_district, notes, restaurants(name, phone, street, number, district), payments(timing))"
 
 /**
  * A fila de corridas, no navegador.
@@ -86,6 +86,9 @@ export default async function CorridasDisponiveis() {
       // oferece o botao de retirar, e quem decide de verdade e o banco.
       situacaoDoPedido: (pedido?.status as SituacaoDoPedido | undefined) ?? "received",
       prontoEm: pedido?.ready_forecast_at ?? null,
+      // Linha reta, nao rota — a conta esta em app.haversine_km. Serve para
+      // comparar corridas, nao para prometer hora de chegada.
+      distanciaKm: d.distance_km ?? null,
     }
   }
 

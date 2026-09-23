@@ -327,14 +327,24 @@ select pg_temp.conferir(
 -- Exigir 'ready' na retirada teria quebrado essa gente.
 -- -----------------------------------------------------------------------------
 
-update orders set status = 'confirmed' where id = 'dddddddd-0000-0000-0000-000000000001';
-update orders set status = 'preparing' where id = 'dddddddd-0000-0000-0000-000000000001';
-update orders set status = 'ready' where id = 'dddddddd-0000-0000-0000-000000000001';
-update orders set status = 'out_for_delivery' where id = 'dddddddd-0000-0000-0000-000000000001';
+-- Pedido proprio: os anteriores ja foram levados ate o fim mais acima, e
+-- reaproveitar um deles esbarraria no guarda de transicao.
+insert into orders (id, restaurant_id, customer_id, customer_name, status, fulfillment,
+                    address_summary, subtotal_cents, delivery_fee_cents, total_cents)
+values ('dddddddd-0000-0000-0000-000000000005',
+        'aaaaaaaa-0000-0000-0000-000000000001',
+        '22222222-2222-2222-2222-222222222222',
+        'Ana Prado', 'received', 'delivery',
+        'Rua D, 44', 2000, 500, 2500);
+
+update orders set status = 'confirmed' where id = 'dddddddd-0000-0000-0000-000000000005';
+update orders set status = 'preparing' where id = 'dddddddd-0000-0000-0000-000000000005';
+update orders set status = 'ready' where id = 'dddddddd-0000-0000-0000-000000000005';
+update orders set status = 'out_for_delivery' where id = 'dddddddd-0000-0000-0000-000000000005';
 
 insert into deliveries (id, order_id, restaurant_id, status, courier_fee_cents)
 values ('ffffffff-0000-0000-0000-000000000002',
-        'dddddddd-0000-0000-0000-000000000001',
+        'dddddddd-0000-0000-0000-000000000005',
         'aaaaaaaa-0000-0000-0000-000000000001', 'searching_courier', 700);
 
 update deliveries
@@ -348,8 +358,53 @@ update deliveries set status = 'picked_up'
   where id = 'ffffffff-0000-0000-0000-000000000002';
 
 select pg_temp.conferir(
-  (select status from orders where id = 'dddddddd-0000-0000-0000-000000000001') = 'out_for_delivery',
+  (select status from orders where id = 'dddddddd-0000-0000-0000-000000000005') = 'out_for_delivery',
   'no caminho antigo a retirada passa e nao desfaz o despacho do balcao');
+
+-- -----------------------------------------------------------------------------
+-- A distancia da corrida
+--
+-- A coluna existia desde a fundacao e nunca era escrita. O entregador decidia
+-- sem saber quanto ia rodar.
+-- -----------------------------------------------------------------------------
+
+select pg_temp.conferir(
+  abs(app.haversine_km(0, 0, 1, 0) - 111.19) < 0.1,
+  'um grau de latitude da 111,19 km');
+
+select pg_temp.conferir(
+  app.haversine_km(-20.3155, -40.3128, -20.3155, -40.3128) = 0,
+  'o mesmo ponto dista zero de si mesmo');
+
+select pg_temp.conferir(
+  app.haversine_km(null, -40.3128, -20.29, -40.31) is null,
+  'sem coordenada nao ha distancia — e nulo, nao zero');
+
+-- Loja em Vitoria, cliente dois quilometros ao norte.
+update restaurants
+   set latitude = -20.3155, longitude = -40.3128
+ where id = 'aaaaaaaa-0000-0000-0000-000000000002';
+
+update orders
+   set address_latitude = -20.29741, address_longitude = -40.3128
+ where id = 'dddddddd-0000-0000-0000-000000000003';
+
+insert into deliveries (id, order_id, restaurant_id, status, courier_fee_cents)
+values ('ffffffff-0000-0000-0000-000000000003',
+        'dddddddd-0000-0000-0000-000000000003',
+        'aaaaaaaa-0000-0000-0000-000000000002', 'pending', 700);
+
+select pg_temp.conferir(
+  (select abs(distance_km - 2.0) < 0.1 from deliveries
+    where id = 'ffffffff-0000-0000-0000-000000000003'),
+  'a corrida nasce sabendo quantos quilometros tem');
+
+-- Sem coordenada do cliente, nulo continua sendo o normal: nem todo mundo
+-- deixa o aplicativo marcar o endereco no mapa.
+select pg_temp.conferir(
+  (select distance_km is null from deliveries
+    where id = 'ffffffff-0000-0000-0000-000000000001'),
+  'corrida sem coordenada nasce sem distancia, e nao quebra');
 
 -- -----------------------------------------------------------------------------
 -- Entregador
