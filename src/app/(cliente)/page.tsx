@@ -77,7 +77,14 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
       .order("position"),
     // Loja aberta na frente: ordenar só por nota põe o melhor restaurante da
     // cidade, fechado, no topo da tela de quem quer comer agora.
-    consulta.order("is_open", { ascending: false }).order("rating_avg", { ascending: false }).limit(20),
+    // O `name` é o desempate estável: loja nova nasce com nota zero, então
+    // sem ele quase toda a vitrine sai numa ordem que o Postgres escolhe na
+    // hora, e a lista embaralha a cada carregamento.
+    consulta
+      .order("is_open", { ascending: false })
+      .order("rating_avg", { ascending: false })
+      .order("name", { ascending: true })
+      .limit(20),
   ])
 
   return (

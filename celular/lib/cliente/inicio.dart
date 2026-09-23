@@ -7,14 +7,12 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../comum/barra_do_carrinho.dart';
+
 import '../ambiente.dart';
 import '../comum/widgets.dart';
-import '../dados/carrinho.dart';
-import '../formato.dart';
-import '../sessao.dart';
 import '../tema.dart';
 import '../dados/mesa.dart';
-import 'carrinho.dart';
 import 'faixa_da_mesa.dart';
 import 'ler_mesa.dart';
 import 'conta.dart';
@@ -82,7 +80,7 @@ class _InicioDoClienteState extends State<InicioDoCliente> {
     bottomNavigationBar: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _BarraDoCarrinho(),
+        const BarraDoCarrinho(),
         NavigationBar(
           selectedIndex: _aba,
           onDestinationSelected: (i) => setState(() => _aba = i),
@@ -110,75 +108,3 @@ class _InicioDoClienteState extends State<InicioDoCliente> {
   );
 }
 
-/// A faixa que aparece acima da barra de abas quando há carrinho aberto.
-class _BarraDoCarrinho extends StatelessWidget {
-  const _BarraDoCarrinho();
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Carrinho.instancia,
-    builder: (context, _) {
-      final carrinho = Carrinho.instancia;
-      if (carrinho.vazio || !Sessao.instancia.autenticado) {
-        return const SizedBox.shrink();
-      }
-
-      return Material(
-        // A chave existe para o passeio de capturas conseguir tocar a
-        // barra: ela é a única coisa na tela sem texto próprio estável.
-        key: const Key('barra-do-carrinho'),
-        color: Cores.marca,
-        child: InkWell(
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const TelaCarrinho())),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '${carrinho.quantidadeDeItens}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    carrinho.restaurante?.nome ?? 'Seu pedido',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Text(
-                  emReais(carrinho.subtotalCentavos),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: Colors.white),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
-  );
-}

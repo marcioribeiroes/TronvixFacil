@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../comum/barra_do_carrinho.dart';
 import '../comum/widgets.dart';
 import '../dados/cardapio.dart';
 import '../formato.dart';
@@ -83,6 +84,10 @@ class _TelaRestauranteState extends State<TelaRestaurante> {
     }
 
     return Scaffold(
+      // A barra do carrinho vive AQUI também, e não só nas telas de aba: este
+      // é o único lugar onde se adiciona item, e sem ela o "Adicionar ao
+      // carrinho" não produzia nenhum sinal na tela.
+      bottomNavigationBar: const BarraDoCarrinho(),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -93,12 +98,30 @@ class _TelaRestauranteState extends State<TelaRestaurante> {
               title: Text(r.nome,
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w800)),
-              background: Foto(
-                url: r.capaUrl ?? r.logoUrl,
-                largura: double.infinity,
-                altura: 180,
-                raio: 0,
-                icone: Icons.storefront,
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Foto(
+                    url: r.capaUrl ?? r.logoUrl,
+                    largura: double.infinity,
+                    altura: 180,
+                    raio: 0,
+                    icone: Icons.storefront,
+                  ),
+                  // Véu por baixo do nome. Sem ele o texto some dentro da foto
+                  // — e capa de restaurante é justamente onde há tijolo, prato
+                  // e letreiro. O escuro entra só na metade de baixo, para não
+                  // apagar a foto que a loja escolheu.
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.center,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Color(0x99000000)],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

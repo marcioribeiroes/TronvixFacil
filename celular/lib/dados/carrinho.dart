@@ -69,6 +69,18 @@ class Carrinho extends ChangeNotifier {
     return falta > 0 ? falta : 0;
   }
 
+  /// Quanto falta para a entrega sair de graça.
+  ///
+  /// Zero quando já saiu — e zero também quando a loja não tem essa política,
+  /// porque aí não há nada a perseguir e prometer frete grátis que não existe
+  /// é pior do que não falar nada.
+  int faltaParaEntregaGratis() {
+    final limite = _restaurante?.entregaGratisAcimaDeCentavos;
+    if (limite == null || limite <= 0) return 0;
+    final falta = limite - subtotalCentavos;
+    return falta > 0 ? falta : 0;
+  }
+
   /// Lê o carrinho aberto da pessoa, se houver.
   ///
   /// O índice `carts_open_per_restaurant_idx` garante um carrinho por

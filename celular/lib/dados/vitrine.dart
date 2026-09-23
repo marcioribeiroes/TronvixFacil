@@ -92,6 +92,11 @@ class Vitrine {
         final linhas = await consulta
             .order('is_open', ascending: false)
             .order('rating_avg', ascending: false)
+            // Desempate estável. Sem ele, lojas de mesma nota — e loja nova
+            // nasce com nota zero, então são quase todas — saem numa ordem que
+            // o Postgres escolhe na hora, e a vitrine embaralha a cada
+            // abertura. Quem procurou uma loja ontem não a acha no mesmo lugar.
+            .order('name', ascending: true)
             .limit(limite);
 
         return linhas.map((l) => Restaurante.deMapa(l)).toList();
