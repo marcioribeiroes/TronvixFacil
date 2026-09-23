@@ -48,13 +48,19 @@ total=0
 falhou=0
 for teste in "$RAIZ"/supabase/tests/regras_*.sql; do
   echo "    $(basename "$teste")"
-  saida=$(psql -d "$BANCO" -v ON_ERROR_STOP=1 -f "$teste" 2>&1) || true
-
-  echo "$saida" | grep -E "NOTICE:|ERROR:" | sed -E 's/^psql:[^ ]+ //; s/^NOTICE:  //' || true
-
-  if echo "$saida" | grep -q "ERROR:"; then
+  # O veredito vem do codigo de saida do psql, e nao de procurar "ERROR:" no
+  # texto: com ON_ERROR_STOP=1 ele sai diferente de zero em qualquer erro, em
+  # qualquer idioma. Procurar a palavra escondia falha em maquina configurada
+  # em portugues, onde a mensagem e "ERRO:" — o arquivo abortava no meio e o
+  # script anunciava que tudo tinha passado.
+  if saida=$(psql -d "$BANCO" -v ON_ERROR_STOP=1 -f "$teste" 2>&1); then
+    :
+  else
     falhou=1
   fi
+
+  echo "$saida" | grep -E "NOTICE:|NOTA:|ERROR:|ERRO:" |
+    sed -E 's/^psql:[^ ]+ //; s/^(NOTICE|NOTA):  //' || true
   total=$(( total + $(echo "$saida" | grep -c "ok - " || true) ))
 done
 

@@ -165,6 +165,15 @@ do $$
 declare v_pedido uuid := (select id from orders limit 1);
 begin
   update deliveries set status = 'heading_to_restaurant';
+
+  -- A comida precisa existir antes de alguem pega-la: desde
+  -- `app.guard_delivery_status`, 'picked_up' exige o pedido pronto. Este
+  -- arquivo testa rastreio, e nao a regra da retirada — aqui a cozinha so
+  -- anda ate onde precisa estar para o entregador sair.
+  update orders set status = 'confirmed' where status = 'received';
+  update orders set status = 'preparing' where status = 'confirmed';
+  update orders set status = 'ready' where status = 'preparing';
+
   update deliveries set status = 'picked_up';
   update deliveries set status = 'heading_to_customer';
 
