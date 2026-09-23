@@ -25,9 +25,12 @@ self.addEventListener("push", (evento) => {
       body: aviso.corpo,
       icon: "/icone.svg",
       badge: "/icone.svg",
-      // A mesma tag substitui o aviso anterior em vez de empilhar: três
-      // pedidos em um minuto não devem virar três avisos na tela de bloqueio.
-      tag: "pedido-novo",
+      // A tag é o destino, e não um texto fixo. Assim os avisos DO MESMO
+      // pedido se substituem — "aceito" vira "saiu para entrega" no mesmo
+      // lugar da tela de bloqueio, em vez de empilhar três — enquanto pedidos
+      // diferentes, e a fila do balcão, seguem separados. Com uma tag só para
+      // tudo, o aviso de um pedido apagava o do outro.
+      tag: aviso.url,
       renotify: true,
       requireInteraction: true,
       data: { url: aviso.url },
@@ -43,9 +46,12 @@ self.addEventListener("notificationclick", (evento) => {
     // Reaproveita a aba já aberta em vez de abrir outra: quem clica no aviso
     // quer ver a fila, não colecionar janelas.
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((abas) => {
+      // Qualquer aba do site serve. Antes procurava só por "/painel", então o
+      // aviso do cliente — que leva a /pedidos/<id> — nunca reaproveitava a
+      // aba aberta e abria uma janela nova a cada toque.
       for (const aba of abas) {
-        if (aba.url.includes("/painel") && "focus" in aba) {
-          aba.navigate(destino)
+        if ("focus" in aba) {
+          if ("navigate" in aba) aba.navigate(destino)
           return aba.focus()
         }
       }

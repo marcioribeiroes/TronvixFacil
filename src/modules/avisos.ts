@@ -10,17 +10,25 @@ import { exigirUsuario } from "@/modules/auth/sessao"
  * tem duas, e reinstalar o navegador gera um endereco novo. Quem limpa as
  * inscricoes mortas e a propria funcao de envio, quando o servico de push
  * responde 404 ou 410.
+ *
+ * Vive fora de `painel/` porque nao e so do balcao: quem pede tambem se
+ * inscreve, para saber que o pedido foi aceito e que saiu para entrega. O que
+ * muda entre os dois e so para onde voltar depois de entrar.
  */
 
 export type ResultadoDaAcao = { ok: true } | { ok: false; erro: string }
 
-export async function salvarInscricaoDePush(dados: {
-  endpoint: string
-  p256dh: string
-  auth: string
-  descricao?: string
-}): Promise<ResultadoDaAcao> {
-  const contexto = await exigirUsuario("/painel/pedidos")
+export async function salvarInscricaoDePush(
+  dados: {
+    endpoint: string
+    p256dh: string
+    auth: string
+    descricao?: string
+  },
+  /** Para onde voltar se a sessao tiver expirado. */
+  voltarPara = "/painel/pedidos",
+): Promise<ResultadoDaAcao> {
+  const contexto = await exigirUsuario(voltarPara)
   const supabase = await criarClienteDoServidor()
 
   const { error } = await supabase.from("push_subscriptions").upsert(
@@ -38,8 +46,11 @@ export async function salvarInscricaoDePush(dados: {
   return { ok: true }
 }
 
-export async function removerInscricaoDePush(endpoint: string): Promise<ResultadoDaAcao> {
-  await exigirUsuario("/painel/pedidos")
+export async function removerInscricaoDePush(
+  endpoint: string,
+  voltarPara = "/painel/pedidos",
+): Promise<ResultadoDaAcao> {
+  await exigirUsuario(voltarPara)
   const supabase = await criarClienteDoServidor()
 
   const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint)
@@ -48,8 +59,11 @@ export async function removerInscricaoDePush(endpoint: string): Promise<Resultad
 }
 
 /** Este aparelho já está inscrito? */
-export async function temInscricao(endpoint: string): Promise<boolean> {
-  const contexto = await exigirUsuario("/painel/pedidos")
+export async function temInscricao(
+  endpoint: string,
+  voltarPara = "/painel/pedidos",
+): Promise<boolean> {
+  const contexto = await exigirUsuario(voltarPara)
   const supabase = await criarClienteDoServidor()
 
   const { count } = await supabase

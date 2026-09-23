@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { AvisosDoPedido } from "@/components/cliente/avisos-do-pedido"
 import { CancelarPedido } from "@/components/cliente/cancelar-pedido"
 import { PagarComPix } from "@/components/cliente/pagar-com-pix"
 import { Check } from "lucide-react"
@@ -85,6 +86,16 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
       <p className="mt-1 text-2xl font-bold tracking-tight">
         {ROTULO_DA_SITUACAO[situacao]}
       </p>
+
+      {/* O convite para ligar o aviso fica aqui, e nao nas configuracoes da
+          conta: e nesta tela que a vontade de saber existe. Pedir permissao
+          de notificacao no primeiro segundo do aplicativo, sem contexto, e o
+          jeito mais rapido de colher um "bloquear" que nunca se reverte. */}
+      <AvisosDoPedido
+        chavePublica={process.env.NEXT_PUBLIC_VAPID_CHAVE_PUBLICA ?? ""}
+        voltarPara={`/pedidos/${pedido.id}`}
+        encerrado={situacao === "delivered" || encerradoMal}
+      />
 
       {podeCancelar ? (
         <div className="mt-4">

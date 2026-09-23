@@ -7,11 +7,12 @@ import { Bell, BellOff, BellRing,
 
 import { Button } from "@/components/ui/button"
 import { ImpressoraTermica } from "@/components/painel/impressora-termica"
+import { inscreverNesteAparelho, inscricaoExistente, suportaPush } from "@/lib/push"
 import {
   removerInscricaoDePush,
   salvarInscricaoDePush,
   temInscricao,
-} from "@/modules/painel/avisos"
+} from "@/modules/avisos"
 
 /**
  * O aviso de pedido novo, nas duas camadas.
@@ -25,25 +26,6 @@ import {
  * depende de ninguem. Num balcao em movimento, quem esta na tela precisa do
  * som; quem saiu precisa do push.
  */
-
-/** O navegador entrega a chave em base64url; a API quer bytes. */
-function paraBytes(base64url: string) {
-  const preenchido = base64url.padEnd(
-    base64url.length + ((4 - (base64url.length % 4)) % 4),
-    "=",
-  )
-  const base64 = preenchido.replace(/-/g, "+").replace(/_/g, "/")
-  const bruto = atob(base64)
-  return Uint8Array.from([...bruto].map((c) => c.charCodeAt(0)))
-}
-
-function comoTexto(chave: ArrayBuffer | null) {
-  if (!chave) return ""
-  return btoa(String.fromCharCode(...new Uint8Array(chave)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "")
-}
 
 export function AvisoDePedidos({
   somLigado,
@@ -70,13 +52,12 @@ export function AvisoDePedidos({
     let vivo = true
 
     async function conferir() {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      if (!suportaPush()) {
         if (vivo) setSuportado(false)
         return
       }
       try {
-        const registro = await navigator.serviceWorker.register("/sw-avisos.js")
-        const inscricao = await registro.pushManager.getSubscription()
+        const inscricao = await inscricaoExistente()
         if (!inscricao || !vivo) return
         // Pergunta ao servidor, e não ao navegador: a inscrição pode existir
         // aqui e ter sido removida lá — por 410 do serviço de push, ou porque
@@ -98,26 +79,7 @@ export function AvisoDePedidos({
     setErro(null)
     iniciar(async () => {
       try {
-        const permissao = await Notification.requestPermission()
-        if (permissao !== "granted") {
-          setErro("O navegador não autorizou os avisos.")
-          return
-        }
-
-        const registro = await navigator.serviceWorker.register("/sw-avisos.js")
-        const inscricao = await registro.pushManager.subscribe({
-          // Obrigatório e sem alternativa: o navegador não aceita push que a
-          // pessoa não possa ver.
-          userVisibleOnly: true,
-          applicationServerKey: paraBytes(chavePublica),
-        })
-
-        const r = await salvarInscricaoDePush({
-          endpoint: inscricao.endpoint,
-          p256dh: comoTexto(inscricao.getKey("p256dh")),
-          auth: comoTexto(inscricao.getKey("auth")),
-          descricao: navigator.userAgent.slice(0, 120),
-        })
+        const r = await salvarInscricaoDePush(await inscreverNesteAparelho(chavePublica))
 
         if (r.ok) setInscrito(true)
         else setErro(r.erro)
