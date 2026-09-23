@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Bike, MapPin, Phone, Store } from "lucide-react"
+import { Bike, Clock, MapPin, Phone, Store } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { formatarReais } from "@/lib/dinheiro"
@@ -44,6 +44,23 @@ export type CorridaNaTela = {
   criadaEm: string
   /** Em que pe esta a comida: e ela que diz se ja da para pegar. */
   situacaoDoPedido: SituacaoDoPedido
+  /** Quando a loja prometeu que fica pronto. Nulo em corrida chamada no jeito antigo. */
+  prontoEm: string | null
+}
+
+/**
+ * A previsao em palavras.
+ *
+ * E o numero que decide se vale aceitar: com ele o entregador sai na hora de
+ * chegar junto com a comida, em vez de correr ate a loja e esperar de pe. O
+ * atraso aparece em vez de sumir — parar de mostrar bem na hora em que a
+ * promessa furou seria esconder o que mais importa.
+ */
+function prontoEmPalavras(iso: string) {
+  const minutos = Math.round((new Date(iso).getTime() - Date.now()) / 60000)
+  if (minutos > 1) return `Fica pronto em ${minutos} min`
+  if (minutos >= 0) return "Fica pronto agora"
+  return `Era para estar pronto há ${Math.abs(minutos)} min`
 }
 
 /**
@@ -201,8 +218,10 @@ export function CorridasDoEntregador({
           </Button>
         ) : esperandoAComida ? (
           <p className="rounded-xl border border-dashed p-4 text-center text-sm font-semibold text-muted-foreground">
-            A cozinha ainda está fazendo. O botão de retirar aparece quando o
-            pedido ficar pronto.
+            {minhaCorrida.prontoEm
+              ? `${prontoEmPalavras(minhaCorrida.prontoEm)}. `
+              : "A cozinha ainda está fazendo. "}
+            O botão de retirar aparece quando o pedido ficar pronto.
           </p>
         ) : null}
 
@@ -281,6 +300,13 @@ export function CorridasDoEntregador({
                   {c.bairro ? `, ${c.bairro}` : ""}
                 </span>
               </p>
+
+              {c.prontoEm ? (
+                <p className="mt-2 flex items-center gap-2 text-sm font-semibold">
+                  <Clock className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  {prontoEmPalavras(c.prontoEm)}
+                </p>
+              ) : null}
 
               {c.recebeNaPorta ? (
                 <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-400">

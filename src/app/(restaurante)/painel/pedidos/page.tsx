@@ -40,7 +40,7 @@ export default async function PaginaDePedidos() {
     supabase
       .from("orders")
       .select(
-        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing, status)",
+        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, ready_forecast_at, order_items(id, product_name, quantity, notes), payments(method, timing, status), deliveries(status)",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .in("status", ABERTOS)
@@ -51,7 +51,7 @@ export default async function PaginaDePedidos() {
     supabase
       .from("orders")
       .select(
-        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, order_items(id, product_name, quantity, notes), payments(method, timing, status)",
+        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, ready_forecast_at, order_items(id, product_name, quantity, notes), payments(method, timing, status), deliveries(status)",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .in("status", ["cancelled", "rejected"])
@@ -64,7 +64,7 @@ export default async function PaginaDePedidos() {
       .gte("created_at", meiaNoite.toISOString()),
     supabase
       .from("restaurants")
-      .select("id, name, is_open, no_horario")
+      .select("id, name, is_open, no_horario, avg_prep_minutes")
       .eq("id", vinculo.restauranteId)
       .single(),
   ])
@@ -113,6 +113,10 @@ export default async function PaginaDePedidos() {
         cancelados={(cancelados ?? []) as PedidoDaFila[]}
         restauranteId={vinculo.restauranteId}
         chavePublicaDePush={process.env.NEXT_PUBLIC_VAPID_CHAVE_PUBLICA ?? ""}
+        // O preparo médio da loja é o palpite inicial da previsão que vai para
+        // o entregador. Um número fixo aqui seria pior: pizzaria e açaiteria
+        // não levam o mesmo tempo.
+        preparoMedioEmMinutos={loja?.avg_prep_minutes ?? 30}
       />
     </div>
   )

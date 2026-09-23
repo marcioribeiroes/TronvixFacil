@@ -20,7 +20,12 @@ import {
   type TipoDeEntrega,
 } from "@/modules/pedidos/maquina-de-estados"
 import { AvisoDePedidos } from "@/components/painel/aviso-de-pedidos"
-import { avancarPedido, confirmarPix, recusarPedido } from "@/modules/painel/pedidos"
+import {
+  avancarPedido,
+  chamarEntregador,
+  confirmarPix,
+  recusarPedido,
+} from "@/modules/painel/pedidos"
 
 export type PedidoDaFila = {
   id: string
@@ -35,8 +40,16 @@ export type PedidoDaFila = {
   notes: string | null
   total_cents: number
   created_at: string
+  /** Promessa de quando a comida fica pronta. Nulo enquanto ninguém chamou. */
+  ready_forecast_at: string | null
   order_items: { id: string; product_name: string; quantity: number; notes: string | null }[]
   payments: { method: string; timing: string; status: string }[]
+  /**
+   * A entrega deste pedido. Vem como objeto, não lista: `deliveries.order_id`
+   * é único, então o PostgREST trata a relação como um-para-um. Nulo em
+   * retirada e mesa, que não têm rua no caminho.
+   */
+  deliveries: { status: string } | null
   cancelled_by?: string | null
   cancellation_reason?: string | null
 }
@@ -51,6 +64,19 @@ const FORMA: Record<string, string> = {
 
 function minutosDesde(iso: string) {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
+}
+
+/**
+ * A previsao em palavras, do jeito que o balcao fala.
+ *
+ * Mostra o atraso quando a hora prometida ja passou, em vez de esconder: e
+ * justamente ai que alguem precisa avisar o entregador que esta a caminho.
+ */
+function quando(iso: string) {
+  const minutos = Math.round((new Date(iso).getTime() - Date.now()) / 60000)
+  if (minutos > 1) return `em ${minutos} min`
+  if (minutos >= 0) return "agora"
+  return `há ${Math.abs(minutos)} min — atrasado`
 }
 
 /**
@@ -71,12 +97,15 @@ export function FilaDePedidos({
   cancelados,
   restauranteId,
   chavePublicaDePush,
+  preparoMedioEmMinutos,
 }: {
   pedidos: PedidoDaFila[]
   /** Cancelados nos ultimos vinte minutos. Sumir em silencio e pior. */
   cancelados: PedidoDaFila[]
   restauranteId: string
   chavePublicaDePush: string
+  /** Palpite inicial da previsao que vai para o entregador. */
+  preparoMedioEmMinutos: number
 }) {
   const router = useRouter()
   const [somLigado, setSomLigado] = useState(false)
@@ -273,7 +302,7 @@ export function FilaDePedidos({
     <div className="space-y-4">
       {aviso}
       <Cancelamentos pedidos={cancelados} />
-      <Quadro pedidos={pedidos} />
+      <Quadro pedidos={pedidos} preparoMedioEmMinutos={preparoMedioEmMinutos} />
     </div>
   )
 }
@@ -368,7 +397,13 @@ function Cancelamentos({ pedidos }: { pedidos: PedidoDaFila[] }) {
   )
 }
 
-function Quadro({ pedidos }: { pedidos: PedidoDaFila[] }) {
+function Quadro({
+  pedidos,
+  preparoMedioEmMinutos,
+}: {
+  pedidos: PedidoDaFila[]
+  preparoMedioEmMinutos: number
+}) {
   return (
     // Rolagem horizontal, e nao colunas que encolhem: cinco colunas espremidas
     // num monitor de balcao viram cinco tiras ilegiveis. Quem tem tela larga ve
@@ -400,7 +435,11 @@ function Quadro({ pedidos }: { pedidos: PedidoDaFila[] }) {
 
               <div className="space-y-3 rounded-xl bg-muted/50 p-2">
                 {daColuna.map((p) => (
-                  <CartaoDoPedido key={p.id} pedido={p} />
+                  <CartaoDoPedido
+                    key={p.id}
+                    pedido={p}
+                    preparoMedioEmMinutos={preparoMedioEmMinutos}
+                  />
                 ))}
 
                 {daColuna.length === 0 ? (
@@ -418,7 +457,13 @@ function Quadro({ pedidos }: { pedidos: PedidoDaFila[] }) {
   )
 }
 
-function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
+function CartaoDoPedido({
+  pedido: p,
+  preparoMedioEmMinutos,
+}: {
+  pedido: PedidoDaFila
+  preparoMedioEmMinutos: number
+}) {
   const [enviando, iniciar] = useTransition()
   const [erro, setErro] = useState<string | null>(null)
   const [recusando, setRecusando] = useState(false)
@@ -448,11 +493,39 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
     pagamento?.method === "pix" &&
     pagamento.status !== "paid"
 
+  /**
+   * Chamar o entregador é decisão separada de despachar.
+   *
+   * Dá para chamar já no preparo: o entregador recebe a previsão e sai na hora
+   * de chegar junto com a comida, em vez de correr até aqui e esperar de pé.
+   */
+  const corrida = p.deliveries?.status ?? null
+  const podeChamar =
+    tipo === "delivery" &&
+    corrida === "pending" &&
+    (situacao === "confirmed" || situacao === "preparing" || situacao === "ready")
+  const procurandoEntregador = corrida === "searching_courier"
+
+  const [minutos, setMinutos] = useState(() => {
+    // Desconta o que a cozinha já gastou: num pedido que entrou há dez minutos,
+    // prometer o preparo médio inteiro manda o entregador chegar tarde.
+    const restante = preparoMedioEmMinutos - minutosDesde(p.created_at)
+    return String(Math.max(5, restante))
+  })
+
   function avancar() {
     if (!destino) return
     setErro(null)
     iniciar(async () => {
       const r = await avancarPedido(p.id, destino)
+      if (!r.ok) setErro(r.erro)
+    })
+  }
+
+  function chamar() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await chamarEntregador(p.id, Number(minutos))
       if (!r.ok) setErro(r.erro)
     })
   }
@@ -608,6 +681,44 @@ function CartaoDoPedido({ pedido: p }: { pedido: PedidoDaFila }) {
           ) : null}
         </div>
       </footer>
+
+      {/* Chamar entregador fica FORA da linha de botões de propósito: não é o
+          próximo passo do pedido, é uma segunda decisão que corre em paralelo
+          à cozinha. Misturado com "Aceitar" e "Pronto", viraria mais um botão
+          na sequência — e quem está no balcão apertaria sem pensar no número. */}
+      {podeChamar ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-3">
+          <Bike className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <label htmlFor={`minutos-${p.id}`} className="text-sm text-muted-foreground">
+            Fica pronto em
+          </label>
+          <input
+            id={`minutos-${p.id}`}
+            type="number"
+            min={0}
+            max={180}
+            value={minutos}
+            onChange={(e) => setMinutos(e.target.value)}
+            className="w-16 rounded-md border bg-background px-2 py-1 text-sm"
+          />
+          <span className="text-sm text-muted-foreground">min</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            onClick={chamar}
+            disabled={enviando}
+          >
+            Chamar entregador
+          </Button>
+        </div>
+      ) : procurandoEntregador ? (
+        <p className="mt-3 flex items-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+          <Bike className="size-4 shrink-0" aria-hidden="true" />
+          Procurando entregador
+          {p.ready_forecast_at ? ` · avisamos que fica pronto ${quando(p.ready_forecast_at)}` : null}
+        </p>
+      ) : null}
 
       {recusando ? (
         <div className="mt-3 space-y-2 rounded-lg border p-3">

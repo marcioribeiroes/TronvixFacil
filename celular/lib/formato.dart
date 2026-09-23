@@ -36,6 +36,21 @@ String haQuantoTempo(DateTime quando) {
 String dataHora(DateTime quando) =>
     DateFormat("d 'de' MMMM', às' HH:mm", 'pt_BR').format(quando);
 
+/// A previsão de quando a comida fica pronta, para quem vai buscá-la.
+///
+/// É o número que decide se vale aceitar a corrida: com ele a pessoa sai na
+/// hora de chegar junto com a comida, em vez de correr até a loja e esperar de
+/// pé. O atraso aparece em vez de sumir — parar de mostrar bem na hora em que a
+/// promessa furou seria esconder o que mais importa.
+String prontoEmPalavras(DateTime previsao) {
+  final d = previsao.difference(DateTime.now());
+  if (d.inSeconds <= -60) {
+    return 'Era para estar pronto há ${minutos(-d.inMinutes)}';
+  }
+  if (d.inSeconds < 60) return 'Fica pronto agora';
+  return 'Fica pronto em ${minutos(d.inMinutes)}';
+}
+
 String minutos(int m) {
   if (m < 60) return '$m min';
   final h = m ~/ 60, r = m % 60;

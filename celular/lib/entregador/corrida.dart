@@ -81,6 +81,17 @@ class _TelaCorridaState extends State<TelaCorrida> {
                 if (c.entrega.distanciaKm != null)
                   Text('${distanciaKm(c.entrega.distanciaKm!)} de percurso',
                       style: const TextStyle(color: Cores.textoSuave)),
+                // A previsão fica junto do valor de propósito: é o outro número
+                // que decide se vale aceitar. Longe dele, a pessoa olha só o
+                // dinheiro e descobre a espera parada na porta da loja.
+                if (c.prontoEm != null && !c.situacaoDoPedido.encerrado)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(prontoEmPalavras(c.prontoEm!),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Cores.texto)),
+                  ),
               ],
             ),
           ),

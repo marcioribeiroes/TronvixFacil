@@ -258,6 +258,21 @@ void main() {
           StatusDaEntrega.retirada);
     });
 
+    test('a previsão vira a frase que decide se vale aceitar', () {
+      final agora = DateTime.now();
+      expect(prontoEmPalavras(agora.add(const Duration(minutes: 8))),
+          'Fica pronto em 8 min');
+      expect(prontoEmPalavras(agora.add(const Duration(seconds: 10))),
+          'Fica pronto agora');
+    });
+
+    test('a previsão furada mostra o atraso em vez de sumir', () {
+      // Esconder bem na hora em que a promessa falhou seria tirar da tela
+      // justamente o que faz alguém avisar que está a caminho.
+      expect(prontoEmPalavras(DateTime.now().subtract(const Duration(minutes: 7))),
+          'Era para estar pronto há 7 min');
+    });
+
     test('os passos seguintes não dependem da cozinha', () {
       expect(
           Corridas.proximoPasso(StatusDaEntrega.retirada,

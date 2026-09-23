@@ -68,6 +68,44 @@ export async function avancarPedido(
 }
 
 /**
+ * Chamar o entregador, com a previsao de quando a comida fica pronta.
+ *
+ * Existe separado de `avancarPedido` porque sao duas decisoes diferentes. Ate
+ * aqui um clique so fazia as duas — marcava o pedido como saido E procurava
+ * quem levasse — e dai ou a comida esperava entregador depois de pronta, ou o
+ * balcao clicava cedo e a tela do cliente dizia "saiu para entrega" com o
+ * pedido ainda no balcao.
+ *
+ * Os minutos nao sao enfeite: sao o unico numero que deixa o entregador
+ * aceitar a corrida e chegar na hora, em vez de correr ate a loja e esperar la.
+ *
+ * A regra mora em `public.chamar_entregador`: quem pode chamar, de quais
+ * situacoes, e a transacao que poe a corrida na fila junto com a previsao.
+ */
+export async function chamarEntregador(
+  id: string,
+  minutos: number,
+): Promise<ResultadoDaAcao> {
+  await exigirVinculo()
+
+  if (!Number.isInteger(minutos) || minutos < 0 || minutos > 180) {
+    return { ok: false, erro: "A previsão tem de estar entre 0 e 180 minutos." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("chamar_entregador", {
+    p_pedido: id,
+    p_minutos: minutos,
+  })
+
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/pedidos")
+  revalidatePath("/painel")
+  return { ok: true }
+}
+
+/**
  * Recusar exige motivo.
  *
  * O motivo vai para `cancellation_reason`, o gatilho o copia para o historico,

@@ -14,6 +14,7 @@ const _corridaCompleta = '''
   *,
   orders(
     id, number, status, fulfillment, total_cents, customer_name, customer_phone,
+    ready_forecast_at,
     address_summary, address_district, address_city, notes, created_at,
     address_latitude, address_longitude,
     restaurant_id, subtotal_cents, delivery_fee_cents, discount_cents,
@@ -22,6 +23,13 @@ const _corridaCompleta = '''
     payments(method, timing, status, amount_cents, change_for_cents)
   )
 ''';
+
+/// O mesmo que `_quando` em modelos.dart, que é privado daquele arquivo.
+///
+/// Vem do Postgres em UTC; sem `toLocal()` a previsão apareceria três horas
+/// fora no Brasil, e o entregador sairia na hora errada.
+DateTime? _horario(Object? v) =>
+    v == null ? null : DateTime.tryParse(v.toString())?.toLocal();
 
 /// Uma corrida com o pedido e o restaurante juntos — é o que a tela mostra:
 /// de onde buscar, para onde levar, quanto recebe.
@@ -33,6 +41,7 @@ class Corrida {
     required this.totalDoPedidoCentavos,
     required this.nomeDoRestaurante,
     required this.situacaoDoPedido,
+    this.prontoEm,
     this.telefoneDoCliente,
     this.enderecoDeEntrega,
     this.bairroDeEntrega,
@@ -54,6 +63,10 @@ class Corrida {
   /// Em que pé está a comida. A corrida agora é aceita durante o preparo, então
   /// o entregador chega antes dela: é esta situação que diz se já dá para pegar.
   final StatusDoPedido situacaoDoPedido;
+
+  /// Quando a loja prometeu que a comida fica pronta. Nulo em corrida chamada
+  /// do jeito antigo, em que ninguém prometia nada.
+  final DateTime? prontoEm;
 
   final String? telefoneDoCliente;
   final String? enderecoDeEntrega;
@@ -102,6 +115,7 @@ class Corrida {
       situacaoDoPedido: StatusDoPedido.de(
         (pedido['status'] as String?) ?? StatusDoPedido.recebido.noBanco,
       ),
+      prontoEm: _horario(pedido['ready_forecast_at']),
       telefoneDoCliente: pedido['customer_phone'] as String?,
       enderecoDeEntrega: pedido['address_summary'] as String?,
       bairroDeEntrega: pedido['address_district'] as String?,
