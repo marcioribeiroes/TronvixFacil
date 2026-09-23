@@ -103,11 +103,36 @@ export function transicaoDoPedidoPermitida(
   return true
 }
 
+/**
+ * Em que situacao do pedido a comida pode ser retirada.
+ *
+ * `ready` e o caso que passa a existir: a corrida e aceita durante o preparo, e
+ * o entregador chega antes da comida. `out_for_delivery` e o caminho antigo, em
+ * que o balcao marcou o pedido como saido antes de existir entregador — esse
+ * continua valendo, e por isso os dois estao aqui.
+ */
+const SITUACOES_QUE_PERMITEM_RETIRAR: readonly SituacaoDoPedido[] = [
+  "ready",
+  "out_for_delivery",
+]
+
+/**
+ * Espelho de app.guard_delivery_status.
+ *
+ * `situacaoDoPedido` e opcional porque a fila desenha o cartao da corrida sem
+ * ter o pedido em maos. Quando vem, vale a trava de "peguei o pedido": sem ela
+ * o entregador que chega cedo empurra para a rua um pedido ainda no fogo.
+ */
 export function transicaoDaEntregaPermitida(
   de: SituacaoDaEntrega,
   para: SituacaoDaEntrega,
+  situacaoDoPedido?: SituacaoDoPedido,
 ): boolean {
-  return TRANSICOES_DA_ENTREGA[de]?.includes(para) ?? false
+  if (!TRANSICOES_DA_ENTREGA[de]?.includes(para)) return false
+  if (para === "picked_up" && situacaoDoPedido !== undefined) {
+    return SITUACOES_QUE_PERMITEM_RETIRAR.includes(situacaoDoPedido)
+  }
+  return true
 }
 
 /** O que a interface pode oferecer a partir da situacao atual. */

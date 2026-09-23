@@ -6,13 +6,16 @@ import {
 } from "@/components/entregador/corridas-do-entregador"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirEntregador } from "@/modules/auth/sessao"
-import type { SituacaoDaEntrega } from "@/modules/pedidos/maquina-de-estados"
+import type {
+  SituacaoDaEntrega,
+  SituacaoDoPedido,
+} from "@/modules/pedidos/maquina-de-estados"
 
 export const metadata: Metadata = { title: "Corridas" }
 
 /** O mesmo recorte que o aplicativo pede — as colunas que a tela usa, e só. */
 const CORRIDA_COMPLETA =
-  "id, status, courier_fee_cents, created_at, courier_id, orders(number, total_cents, customer_name, customer_phone, address_summary, address_district, notes, restaurants(name, phone, street, number, district), payments(timing))"
+  "id, status, courier_fee_cents, created_at, courier_id, orders(number, status, total_cents, customer_name, customer_phone, address_summary, address_district, notes, restaurants(name, phone, street, number, district), payments(timing))"
 
 /**
  * A fila de corridas, no navegador.
@@ -79,6 +82,9 @@ export default async function CorridasDisponiveis() {
       // dizer "já pago" por omissão é o jeito de ele sair sem receber.
       recebeNaPorta: pedido?.payments?.[0]?.timing !== "online",
       criadaEm: d.created_at,
+      // Sem pedido em maos, "received" e o mais conservador: a tela nao
+      // oferece o botao de retirar, e quem decide de verdade e o banco.
+      situacaoDoPedido: (pedido?.status as SituacaoDoPedido | undefined) ?? "received",
     }
   }
 

@@ -271,6 +271,87 @@ select pg_temp.conferir(
   'desistencia devolve a corrida a fila e limpa o entregador');
 
 -- -----------------------------------------------------------------------------
+-- Chamar o entregador antes da comida ficar pronta
+--
+-- A corrida passa a ser aceita durante o preparo, entao o entregador chega
+-- antes da comida. Duas regras nascem disso: ele nao consegue "pegar" o que
+-- nao esta pronto, e pegar e o que poe o pedido na rua.
+-- -----------------------------------------------------------------------------
+
+update deliveries
+  set status = 'assigned', courier_id = 'eeeeeeee-0000-0000-0000-000000000001'
+  where id = 'ffffffff-0000-0000-0000-000000000001';
+
+update deliveries set status = 'heading_to_restaurant'
+  where id = 'ffffffff-0000-0000-0000-000000000001';
+
+-- O pedido ainda esta na cozinha.
+update orders set status = 'confirmed' where id = 'dddddddd-0000-0000-0000-000000000002';
+update orders set status = 'preparing' where id = 'dddddddd-0000-0000-0000-000000000002';
+
+select pg_temp.deve_falhar($$
+  update deliveries set status = 'picked_up'
+  where id = 'ffffffff-0000-0000-0000-000000000001'
+$$, 'retirada de pedido que ainda esta em preparo');
+
+select pg_temp.conferir(
+  (select status from orders where id = 'dddddddd-0000-0000-0000-000000000002') = 'preparing',
+  'a retirada recusada nao mexeu no pedido');
+
+update orders set status = 'ready' where id = 'dddddddd-0000-0000-0000-000000000002';
+
+update deliveries set status = 'picked_up'
+  where id = 'ffffffff-0000-0000-0000-000000000001';
+
+select pg_temp.conferir(
+  (select status from orders where id = 'dddddddd-0000-0000-0000-000000000002') = 'out_for_delivery',
+  'retirar o pedido e o que o poe na rua, sem clique do balcao');
+
+select pg_temp.conferir(
+  (select picked_up_at is not null from deliveries
+    where id = 'ffffffff-0000-0000-0000-000000000001'),
+  'a retirada carimba a hora');
+
+-- A previsao e promessa, e nao pode ser confundida com a medicao: quem
+-- registra o que aconteceu e ready_at, escrito pelo gatilho.
+select pg_temp.conferir(
+  (select ready_at is not null and ready_forecast_at is null
+     from orders where id = 'dddddddd-0000-0000-0000-000000000002'),
+  'ready_at e carimbado pelo gatilho; ready_forecast_at so por quem chama');
+
+-- -----------------------------------------------------------------------------
+-- O caminho antigo continua valendo
+--
+-- Quem despacha na mao - o dono que leva o proprio pedido, a loja sem
+-- entregador cadastrado - marca o pedido como saido ANTES de existir corrida.
+-- Exigir 'ready' na retirada teria quebrado essa gente.
+-- -----------------------------------------------------------------------------
+
+update orders set status = 'confirmed' where id = 'dddddddd-0000-0000-0000-000000000001';
+update orders set status = 'preparing' where id = 'dddddddd-0000-0000-0000-000000000001';
+update orders set status = 'ready' where id = 'dddddddd-0000-0000-0000-000000000001';
+update orders set status = 'out_for_delivery' where id = 'dddddddd-0000-0000-0000-000000000001';
+
+insert into deliveries (id, order_id, restaurant_id, status, courier_fee_cents)
+values ('ffffffff-0000-0000-0000-000000000002',
+        'dddddddd-0000-0000-0000-000000000001',
+        'aaaaaaaa-0000-0000-0000-000000000001', 'searching_courier', 700);
+
+update deliveries
+  set status = 'assigned', courier_id = 'eeeeeeee-0000-0000-0000-000000000001'
+  where id = 'ffffffff-0000-0000-0000-000000000002';
+
+update deliveries set status = 'heading_to_restaurant'
+  where id = 'ffffffff-0000-0000-0000-000000000002';
+
+update deliveries set status = 'picked_up'
+  where id = 'ffffffff-0000-0000-0000-000000000002';
+
+select pg_temp.conferir(
+  (select status from orders where id = 'dddddddd-0000-0000-0000-000000000001') = 'out_for_delivery',
+  'no caminho antigo a retirada passa e nao desfaz o despacho do balcao');
+
+-- -----------------------------------------------------------------------------
 -- Entregador
 -- -----------------------------------------------------------------------------
 

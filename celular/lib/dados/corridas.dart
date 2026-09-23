@@ -32,6 +32,7 @@ class Corrida {
     required this.nomeDoCliente,
     required this.totalDoPedidoCentavos,
     required this.nomeDoRestaurante,
+    required this.situacaoDoPedido,
     this.telefoneDoCliente,
     this.enderecoDeEntrega,
     this.bairroDeEntrega,
@@ -49,6 +50,11 @@ class Corrida {
   final String nomeDoCliente;
   final int totalDoPedidoCentavos;
   final String nomeDoRestaurante;
+
+  /// Em que pé está a comida. A corrida agora é aceita durante o preparo, então
+  /// o entregador chega antes dela: é esta situação que diz se já dá para pegar.
+  final StatusDoPedido situacaoDoPedido;
+
   final String? telefoneDoCliente;
   final String? enderecoDeEntrega;
   final String? bairroDeEntrega;
@@ -93,6 +99,9 @@ class Corrida {
       totalDoPedidoCentavos:
           ((pedido['total_cents'] as num?) ?? 0).round(),
       nomeDoRestaurante: (restaurante['name'] as String?) ?? '',
+      situacaoDoPedido: StatusDoPedido.de(
+        (pedido['status'] as String?) ?? StatusDoPedido.recebido.noBanco,
+      ),
       telefoneDoCliente: pedido['customer_phone'] as String?,
       enderecoDeEntrega: pedido['address_summary'] as String?,
       bairroDeEntrega: pedido['address_district'] as String?,
@@ -228,10 +237,32 @@ class Corridas {
             .eq('id', entregadorId);
       });
 
-  static StatusDaEntrega? proximoPasso(StatusDaEntrega atual) =>
+  /// Em que situação do pedido a comida pode ser retirada.
+  ///
+  /// `pronto` é o caso que passa a existir: a corrida é aceita durante o
+  /// preparo, e o entregador chega antes da comida. `saiuParaEntrega` é o
+  /// caminho antigo, em que o balcão marcava o pedido como saído antes de
+  /// existir entregador — esse continua valendo.
+  static const _permitemRetirar = {
+    StatusDoPedido.pronto,
+    StatusDoPedido.saiuParaEntrega,
+  };
+
+  /// Espelho de `app.guard_delivery_status`.
+  ///
+  /// Devolve `null` quando a comida ainda não está pronta: a tela mostra a
+  /// espera em vez de um botão que o banco recusaria. Quem está de capacete não
+  /// deve descobrir a regra levando erro na cara.
+  static StatusDaEntrega? proximoPasso(
+    StatusDaEntrega atual, {
+    StatusDoPedido? situacaoDoPedido,
+  }) =>
       switch (atual) {
         StatusDaEntrega.designada => StatusDaEntrega.indoAoRestaurante,
-        StatusDaEntrega.indoAoRestaurante => StatusDaEntrega.retirada,
+        StatusDaEntrega.indoAoRestaurante =>
+          situacaoDoPedido == null || _permitemRetirar.contains(situacaoDoPedido)
+              ? StatusDaEntrega.retirada
+              : null,
         StatusDaEntrega.retirada => StatusDaEntrega.indoAoCliente,
         StatusDaEntrega.indoAoCliente => StatusDaEntrega.entregue,
         _ => null,

@@ -46,7 +46,18 @@ class _TelaCorridaState extends State<TelaCorrida> {
   @override
   Widget build(BuildContext context) {
     final c = _corrida;
-    final destino = _minha ? Corridas.proximoPasso(c.entrega.status) : null;
+    final destino = _minha
+        ? Corridas.proximoPasso(
+            c.entrega.status,
+            situacaoDoPedido: c.situacaoDoPedido,
+          )
+        : null;
+
+    // Chegou antes da comida. Sem isto o botão sumiria sem explicação, e quem
+    // está parado na porta da loja não saberia se é para esperar ou ir embora.
+    final esperandoAComida = _minha &&
+        destino == null &&
+        c.entrega.status == StatusDaEntrega.indoAoRestaurante;
 
     return Scaffold(
       appBar: AppBar(title: Text('Pedido nº ${c.numeroDoPedido}')),
@@ -179,9 +190,11 @@ class _TelaCorridaState extends State<TelaCorrida> {
                   : _aceitar,
           child: Text(
             _minha
-                ? (destino == null
-                    ? 'Corrida concluída'
-                    : Corridas.rotuloDoPasso(destino))
+                ? (destino != null
+                    ? Corridas.rotuloDoPasso(destino)
+                    : esperandoAComida
+                        ? 'A cozinha ainda está fazendo'
+                        : 'Corrida concluída')
                 : 'Aceitar corrida',
           ),
         ),

@@ -137,6 +137,37 @@ describe("maquina de estados da entrega", () => {
     expect(transicaoDaEntregaPermitida("pending", "picked_up")).toBe(false)
   })
 
+  it("nao deixa retirar comida que ainda esta no fogo", () => {
+    // O entregador passa a aceitar durante o preparo, e chega antes da comida.
+    // Sem esta trava, o "peguei o pedido" dele empurraria para a rua um pedido
+    // que a cozinha nao terminou. Espelho de app.guard_delivery_status.
+    expect(
+      transicaoDaEntregaPermitida("heading_to_restaurant", "picked_up", "preparing"),
+    ).toBe(false)
+    expect(
+      transicaoDaEntregaPermitida("heading_to_restaurant", "picked_up", "confirmed"),
+    ).toBe(false)
+  })
+
+  it("deixa retirar quando a comida esta pronta", () => {
+    expect(transicaoDaEntregaPermitida("heading_to_restaurant", "picked_up", "ready")).toBe(true)
+  })
+
+  it("deixa retirar no caminho antigo, em que o balcao ja despachou", () => {
+    // Antes da separacao entre chamar e despachar, o pedido virava
+    // "out_for_delivery" sem existir entregador. Quem ja opera assim nao pode
+    // parar de conseguir retirar.
+    expect(
+      transicaoDaEntregaPermitida("heading_to_restaurant", "picked_up", "out_for_delivery"),
+    ).toBe(true)
+  })
+
+  it("sem o pedido em maos, nao inventa trava", () => {
+    // A fila desenha o cartao da corrida sem carregar o pedido inteiro. Ali
+    // quem checa e o banco, no momento da escrita.
+    expect(transicaoDaEntregaPermitida("heading_to_restaurant", "picked_up")).toBe(true)
+  })
+
   it("trata entregue e cancelada como terminais", () => {
     for (const destino of SITUACOES_DA_ENTREGA) {
       expect(transicaoDaEntregaPermitida("delivered", destino)).toBe(false)

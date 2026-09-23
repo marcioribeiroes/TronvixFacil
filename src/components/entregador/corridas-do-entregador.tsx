@@ -12,7 +12,11 @@ import {
   desistirDaCorrida,
   mudarDisponibilidade,
 } from "@/modules/entregador/corridas"
-import type { SituacaoDaEntrega } from "@/modules/pedidos/maquina-de-estados"
+import {
+  transicaoDaEntregaPermitida,
+  type SituacaoDaEntrega,
+  type SituacaoDoPedido,
+} from "@/modules/pedidos/maquina-de-estados"
 
 /**
  * A tela do entregador na rua.
@@ -38,15 +42,27 @@ export type CorridaNaTela = {
   observacao: string | null
   recebeNaPorta: boolean
   criadaEm: string
+  /** Em que pe esta a comida: e ela que diz se ja da para pegar. */
+  situacaoDoPedido: SituacaoDoPedido
 }
 
-/** Espelho de Corridas.proximoPasso, em celular/lib/dados/corridas.dart. */
-function proximoPasso(atual: SituacaoDaEntrega): SituacaoDaEntrega | null {
+/**
+ * Espelho de Corridas.proximoPasso, em celular/lib/dados/corridas.dart.
+ *
+ * Devolve `null` quando a comida ainda nao esta pronta, para a tela mostrar a
+ * espera em vez de um botao que o banco recusaria.
+ */
+function proximoPasso(
+  atual: SituacaoDaEntrega,
+  situacaoDoPedido: SituacaoDoPedido,
+): SituacaoDaEntrega | null {
   switch (atual) {
     case "assigned":
       return "heading_to_restaurant"
     case "heading_to_restaurant":
-      return "picked_up"
+      return transicaoDaEntregaPermitida(atual, "picked_up", situacaoDoPedido)
+        ? "picked_up"
+        : null
     case "picked_up":
       return "heading_to_customer"
     case "heading_to_customer":
@@ -121,7 +137,11 @@ export function CorridasDoEntregador({
   // Com corrida em curso, a fila some. Nao e economia de tela: e nao oferecer
   // uma segunda corrida a quem ja esta com comida esfriando na mochila.
   if (minhaCorrida) {
-    const destino = proximoPasso(minhaCorrida.situacao)
+    const destino = proximoPasso(minhaCorrida.situacao, minhaCorrida.situacaoDoPedido)
+    // Chegou antes da comida. Sem dizer isso, o botao sumiria sem explicacao
+    // para quem esta parado na porta da loja.
+    const esperandoAComida =
+      destino === null && minhaCorrida.situacao === "heading_to_restaurant"
     const podeDesistir =
       minhaCorrida.situacao === "assigned" ||
       minhaCorrida.situacao === "heading_to_restaurant"
@@ -179,6 +199,11 @@ export function CorridasDoEntregador({
           >
             {VERBO[destino] ?? "Avançar"}
           </Button>
+        ) : esperandoAComida ? (
+          <p className="rounded-xl border border-dashed p-4 text-center text-sm font-semibold text-muted-foreground">
+            A cozinha ainda está fazendo. O botão de retirar aparece quando o
+            pedido ficar pronto.
+          </p>
         ) : null}
 
         {podeDesistir ? (

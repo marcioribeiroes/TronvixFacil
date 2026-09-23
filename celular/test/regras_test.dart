@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:tronvix_facil/dados/cardapio.dart';
 import 'package:tronvix_facil/dados/carrinho.dart';
+import 'package:tronvix_facil/dados/corridas.dart';
 import 'package:tronvix_facil/formato.dart';
 import 'package:tronvix_facil/modelos/modelos.dart';
 
@@ -216,6 +217,56 @@ void main() {
       for (final s in StatusDoPedido.values) {
         expect(transicoesPermitidas.containsKey(s), isTrue, reason: '$s');
       }
+    });
+  });
+
+  group('retirar a comida', () {
+    // A corrida passa a ser aceita durante o preparo, então o entregador chega
+    // antes da comida. Espelho de `app.guard_delivery_status`: o que se testa
+    // aqui é a fidelidade da cópia, não a regra — ela mora no banco.
+
+    test('não oferece retirar enquanto a cozinha não terminou', () {
+      for (final situacao in [
+        StatusDoPedido.recebido,
+        StatusDoPedido.confirmado,
+        StatusDoPedido.emPreparo,
+      ]) {
+        expect(
+            Corridas.proximoPasso(StatusDaEntrega.indoAoRestaurante,
+                situacaoDoPedido: situacao),
+            isNull,
+            reason: '$situacao');
+      }
+    });
+
+    test('oferece retirar quando o pedido fica pronto', () {
+      expect(
+          Corridas.proximoPasso(StatusDaEntrega.indoAoRestaurante,
+              situacaoDoPedido: StatusDoPedido.pronto),
+          StatusDaEntrega.retirada);
+    });
+
+    test('oferece retirar no caminho antigo, já despachado pelo balcão', () {
+      expect(
+          Corridas.proximoPasso(StatusDaEntrega.indoAoRestaurante,
+              situacaoDoPedido: StatusDoPedido.saiuParaEntrega),
+          StatusDaEntrega.retirada);
+    });
+
+    test('sem o pedido em mãos, não inventa trava', () {
+      expect(Corridas.proximoPasso(StatusDaEntrega.indoAoRestaurante),
+          StatusDaEntrega.retirada);
+    });
+
+    test('os passos seguintes não dependem da cozinha', () {
+      expect(
+          Corridas.proximoPasso(StatusDaEntrega.retirada,
+              situacaoDoPedido: StatusDoPedido.pronto),
+          StatusDaEntrega.indoAoCliente);
+      expect(
+          Corridas.proximoPasso(StatusDaEntrega.designada,
+              situacaoDoPedido: StatusDoPedido.emPreparo),
+          StatusDaEntrega.indoAoRestaurante);
     });
   });
 
