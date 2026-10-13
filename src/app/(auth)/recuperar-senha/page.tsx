@@ -8,7 +8,12 @@ import { supabaseConfigurado } from "@/lib/ambiente"
 
 export const metadata: Metadata = { title: "Recuperar senha" }
 
-export default function PaginaDeRecuperacao() {
+export default async function PaginaDeRecuperacao({
+  searchParams,
+}: PageProps<"/recuperar-senha">) {
+  const parametros = await searchParams
+  const linkInvalido = parametros.link === "invalido"
+
   return (
     <div className="space-y-8">
       <Link
@@ -25,6 +30,13 @@ export default function PaginaDeRecuperacao() {
           Informe o e-mail da conta e enviaremos um link para criar uma nova senha.
         </p>
       </div>
+
+      {linkInvalido ? (
+        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Este link de recuperação expirou ou já foi usado. Peça um novo abaixo e abra-o no mesmo
+          navegador em que fez o pedido.
+        </p>
+      ) : null}
 
       {supabaseConfigurado() ? <FormularioDeRecuperacao /> : <AvisoDeConfiguracao />}
     </div>

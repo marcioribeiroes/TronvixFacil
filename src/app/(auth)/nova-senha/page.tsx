@@ -7,8 +7,9 @@ import { supabaseConfigurado } from "@/lib/ambiente"
 export const metadata: Metadata = { title: "Nova senha" }
 
 /**
- * Destino do link enviado por e-mail. O Supabase ja troca o token por uma
- * sessao antes de a pagina carregar, entao aqui basta gravar a senha nova.
+ * Destino do link enviado por e-mail. O proxy (src/proxy.ts) troca o codigo do
+ * link por uma sessao antes de a pagina carregar, entao aqui basta gravar a
+ * senha nova.
  */
 export default function PaginaDeNovaSenha() {
   return (

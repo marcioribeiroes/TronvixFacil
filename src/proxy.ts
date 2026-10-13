@@ -60,14 +60,46 @@ export async function proxy(request: NextRequest) {
     },
   })
 
+  const caminho = request.nextUrl.pathname
+
+  // O link de "esqueci minha senha" chega aqui com um codigo de uso unico
+  // (?code=, fluxo PKCE do @supabase/ssr) ou, se o modelo de e-mail for
+  // trocado, com ?token_hash=&type=recovery. Alguem precisa trocar isso por
+  // uma sessao - sem ela, gravar a senha nova falha com "Auth session
+  // missing!". O proxy e o unico lugar que pode gravar o cookie, entao a troca
+  // e feita aqui, e a pessoa segue para a mesma tela com a URL limpa.
+  if (caminho === "/nova-senha") {
+    const codigo = request.nextUrl.searchParams.get("code")
+    const tokenHash = request.nextUrl.searchParams.get("token_hash")
+
+    if (codigo || tokenHash) {
+      const { error } = codigo
+        ? await supabase.auth.exchangeCodeForSession(codigo)
+        : await supabase.auth.verifyOtp({ token_hash: tokenHash!, type: "recovery" })
+
+      const destino = request.nextUrl.clone()
+      destino.search = ""
+      if (error) {
+        // Link vencido, ja usado, ou aberto em outro navegador (o PKCE guarda
+        // a outra metade do codigo num cookie de quem pediu a recuperacao).
+        destino.pathname = "/recuperar-senha"
+        destino.searchParams.set("link", "invalido")
+      }
+
+      const redirecionamento = NextResponse.redirect(destino)
+      for (const cookie of resposta.cookies.getAll()) {
+        redirecionamento.cookies.set(cookie)
+      }
+      return redirecionamento
+    }
+  }
+
   // getUser() valida o token no servidor do Supabase. getSession() apenas le o
   // cookie, que o navegador pode ter adulterado - por isso nao serve para
   // decidir acesso.
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const caminho = request.nextUrl.pathname
   // A comparacao e por SEGMENTO, nao por prefixo de texto. "/conta-apagada"
   // comeca com "/conta" e nao tem nada com a area do cliente: quem chega la
   // acabou de apagar a conta e nao tem mais sessao — mandar essa pessoa para o
