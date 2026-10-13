@@ -4,11 +4,15 @@ import { notFound } from "next/navigation"
 import { AvisosDoPedido } from "@/components/cliente/avisos-do-pedido"
 import { CancelarPedido } from "@/components/cliente/cancelar-pedido"
 import { PagarComPix } from "@/components/cliente/pagar-com-pix"
-import { Check } from "lucide-react"
+import { Check, Plus } from "lucide-react"
+import Link from "next/link"
+
+import { Button } from "@/components/ui/button"
 
 import { formatarReais } from "@/lib/dinheiro"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirUsuario } from "@/modules/auth/sessao"
+import { pedidoEditavel } from "@/modules/pedidos/edicao"
 import { ROTULO_DA_SITUACAO, type SituacaoDoPedido } from "@/modules/pedidos/maquina-de-estados"
 
 export const metadata: Metadata = { title: "Acompanhar pedido" }
@@ -78,6 +82,10 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
   // botão que vai falhar é pior do que não oferecer botão nenhum.
   const podeCancelar = situacao === "awaiting_payment" || situacao === "received"
 
+  // Na mesa, enquanto a conta esta aberta, o cliente pede mais no mesmo
+  // pedido. A regra e a de `pedir_mais_na_mesa`; aqui so se decide o botao.
+  const podePedirMais = pedido.fulfillment === "dine_in" && pedidoEditavel(situacao, pagamento)
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <h1 className="text-sm font-semibold text-muted-foreground">
@@ -96,6 +104,15 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
         voltarPara={`/pedidos/${pedido.id}`}
         encerrado={situacao === "delivered" || encerradoMal}
       />
+
+      {podePedirMais ? (
+        <div className="mt-4">
+          <Button render={<Link href={`/pedidos/${pedido.id}/pedir-mais`} />}>
+            <Plus className="size-4" aria-hidden="true" />
+            Pedir mais
+          </Button>
+        </div>
+      ) : null}
 
       {podeCancelar ? (
         <div className="mt-4">

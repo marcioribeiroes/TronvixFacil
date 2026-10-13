@@ -11,16 +11,27 @@ import 'package:flutter/material.dart';
 import '../comum/widgets.dart';
 import '../dados/cardapio.dart';
 import '../dados/carrinho.dart';
+import '../dados/edicao.dart';
 import '../formato.dart';
 import '../main.dart';
 import '../modelos/modelos.dart';
 import '../tema.dart';
 
 class TelaProduto extends StatefulWidget {
-  const TelaProduto({super.key, required this.produto, required this.restaurante});
+  const TelaProduto({
+    super.key,
+    required this.produto,
+    required this.restaurante,
+    this.paraOPedido = false,
+  });
 
   final Produto produto;
   final Restaurante restaurante;
+
+  /// A escolha volta para quem abriu a tela (como [EscolhaDoProduto]) em vez
+  /// de ir para o carrinho. É o caminho de editar o pedido e de pedir mais na
+  /// mesa: as regras dos adicionais são as mesmas, o destino é outro.
+  final bool paraOPedido;
 
   @override
   State<TelaProduto> createState() => _TelaProdutoState();
@@ -96,6 +107,16 @@ class _TelaProdutoState extends State<TelaProduto> {
     if (pendente != null) {
       avisar(context, 'Escolha em "${pendente.nome}" antes de continuar.',
           erro: true);
+      return;
+    }
+
+    if (widget.paraOPedido) {
+      Navigator.of(context).pop(EscolhaDoProduto(
+        produto: widget.produto,
+        quantidade: _quantidade,
+        adicionais: _selecao,
+        observacao: _observacao.text,
+      ));
       return;
     }
 
@@ -237,7 +258,11 @@ class _TelaProdutoState extends State<TelaProduto> {
               ),
               filho: FilledButton(
                 onPressed: _enviando ? null : _adicionar,
-                child: Text(_enviando ? 'Adicionando…' : 'Adicionar ao carrinho'),
+                child: Text(_enviando
+                    ? 'Adicionando…'
+                    : widget.paraOPedido
+                        ? 'Pôr no pedido'
+                        : 'Adicionar ao carrinho'),
               ),
             ),
     );

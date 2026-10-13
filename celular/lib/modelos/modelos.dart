@@ -430,6 +430,7 @@ class ItemDoPedido {
     this.produtoId,
     this.imagemUrl,
     this.observacao,
+    this.criadoEm,
   });
 
   final String id;
@@ -443,6 +444,9 @@ class ItemDoPedido {
   final String? imagemUrl;
   final String? observacao;
 
+  /// Quando o item entrou no pedido. Depois do pedido, é item acrescentado.
+  final DateTime? criadoEm;
+
   factory ItemDoPedido.deMapa(Map<String, dynamic> m) => ItemDoPedido(
         id: m['id'] as String,
         nomeDoProduto: m['product_name'] as String,
@@ -453,6 +457,7 @@ class ItemDoPedido {
         produtoId: m['product_id'] as String?,
         imagemUrl: m['product_image_url'] as String?,
         observacao: m['notes'] as String?,
+        criadoEm: _quando(m['created_at']),
         adicionais: ((m['order_item_addons'] as List?) ?? const [])
             .cast<Map<String, dynamic>>()
             .map(AdicionalDoPedido.deMapa)
@@ -514,6 +519,7 @@ class Pedido {
     this.logoDoRestaurante,
     this.pagamento,
     this.entrega,
+    this.clienteAcrescentouEm,
   });
 
   final String id;
@@ -555,6 +561,9 @@ class Pedido {
   final Pagamento? pagamento;
   final Entrega? entrega;
 
+  /// Quando o cliente da mesa pediu mais pela última vez.
+  final DateTime? clienteAcrescentouEm;
+
   factory Pedido.deMapa(Map<String, dynamic> m) {
     final restaurante = aninhado(m['restaurants']);
     final pagamento = aninhado(m['payments']);
@@ -595,8 +604,14 @@ class Pedido {
           .toList(),
       pagamento: pagamento == null ? null : Pagamento.deMapa(pagamento),
       entrega: entrega == null ? null : Entrega.deMapa(entrega),
+      clienteAcrescentouEm: _quando(m['customer_added_at']),
     );
   }
+
+  /// Item que entrou depois do fechamento — os do fechamento nascem com o
+  /// mesmo carimbo do pedido.
+  bool foiAcrescentado(ItemDoPedido i) =>
+      i.criadoEm != null && i.criadoEm!.isAfter(criadoEm);
 
   int get quantidadeDeItens =>
       itens.fold(0, (soma, i) => soma + i.quantidade);
@@ -642,6 +657,11 @@ class Pagamento {
 
   int get trocoCentavos =>
       trocoParaCentavos == null ? 0 : trocoParaCentavos! - valorCentavos;
+
+  /// Pago na entrega e ainda não recebido: é o que o balcão tem de cobrar.
+  bool get aReceber =>
+      momento == MomentoDoPagamento.naEntrega &&
+      status == StatusDoPagamento.pendente;
 }
 
 class Entrega {

@@ -14,6 +14,7 @@ import { exigirVinculo } from "@/modules/auth/sessao"
 const MENU_DA_GESTAO: ItemDeMenu[] = [
   { rotulo: "Dashboard", href: "/painel", icone: "dashboard" },
   { rotulo: "Pedidos", href: "/painel/pedidos", icone: "comanda" },
+  { rotulo: "Caixa", href: "/painel/caixa", icone: "caixa" },
   { rotulo: "Cardápio", href: "/painel/cardapio", icone: "cardapio" },
   { rotulo: "Categorias", href: "/painel/categorias", icone: "categorias" },
   { rotulo: "Produtos", href: "/painel/produtos", icone: "produtos" },
@@ -32,7 +33,7 @@ const MENU_DA_GESTAO: ItemDeMenu[] = [
  * sim nao oferecer botao que a pessoa nao pode usar.
  */
 const MENU_DO_ATENDENTE: ItemDeMenu[] = MENU_DA_GESTAO.filter((item) =>
-  ["/painel", "/painel/pedidos", "/painel/cardapio", "/painel/entregas", "/painel/mesas"].includes(
+  ["/painel", "/painel/pedidos", "/painel/caixa", "/painel/cardapio", "/painel/entregas", "/painel/mesas"].includes(
     item.href,
   ),
 )

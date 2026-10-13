@@ -113,6 +113,19 @@ class Balcao {
         }
       });
 
+  /// O cliente pagou, e pagou desta forma.
+  ///
+  /// A forma vem de quem recebeu, não do que foi escolhido no aplicativo: quem
+  /// pediu em dinheiro e passou o cartão entra no caixa como cartão. A regra
+  /// mora em `receber_pagamento`, no banco.
+  static Future<void> receber(String pedidoId, FormaDePagamento forma) =>
+      executar(
+        () => banco.rpc(
+          'receber_pagamento',
+          params: {'p_pedido': pedidoId, 'p_forma': forma.noBanco},
+        ),
+      );
+
   static Future<void> recusar(String pedidoId, String motivo) =>
       executar(() => banco.from('orders').update({
             'status': StatusDoPedido.recusado.noBanco,

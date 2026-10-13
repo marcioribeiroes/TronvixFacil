@@ -1,14 +1,22 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
+import { FORMAS_DE_PAGAMENTO } from "@/modules/caixa/formas-de-pagamento"
 import {
   transicaoDoPedidoPermitida,
   type SituacaoDoPedido,
   type TipoDeEntrega,
 } from "@/modules/pedidos/maquina-de-estados"
 import { exigirVinculo } from "@/modules/auth/sessao"
+import {
+  schemaDaEdicao,
+  schemaDoLancamento,
+  type EdicaoDoPedido,
+  type Lancamento,
+} from "@/modules/pedidos/edicao"
 
 /**
  * O que o balcao faz com um pedido.
@@ -133,6 +141,101 @@ export async function recusarPedido(id: string, motivo: string): Promise<Resulta
   return { ok: true }
 }
 
+const schemaDoRecebimento = z.object({
+  id: z.uuid(),
+  forma: z.enum(FORMAS_DE_PAGAMENTO),
+})
+
+/**
+ * O cliente pagou no balcao, na mesa ou na porta — e o pagamento vai para o
+ * caixa.
+ *
+ * A forma vem de quem recebeu, e nao do que foi escolhido no aplicativo: o
+ * cliente que pediu em dinheiro e passou o cartao entra no caixa como cartao,
+ * senao a gaveta nunca bate. A regra mora em `receber_pagamento`, no banco.
+ */
+export async function receberPagamento(id: string, forma: string): Promise<ResultadoDaAcao> {
+  await exigirVinculo()
+
+  const entrada = schemaDoRecebimento.safeParse({ id, forma })
+  if (!entrada.success) {
+    return { ok: false, erro: "Escolha como o cliente pagou." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("receber_pagamento", {
+    p_pedido: entrada.data.id,
+    p_forma: entrada.data.forma,
+  })
+
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/pedidos")
+  revalidatePath("/painel/caixa")
+  return { ok: true }
+}
+
+/**
+ * Mudar quantidades, tirar e acrescentar itens num pedido ainda aberto.
+ *
+ * Uma chamada so, com tudo o que mudou: o banco aplica numa transacao e refaz
+ * a conta, o estoque e o valor a receber (`editar_pedido`). A cozinha nunca ve
+ * o pedido pela metade.
+ */
+export async function editarPedido(
+  id: string,
+  edicao: EdicaoDoPedido,
+): Promise<ResultadoDaAcao> {
+  await exigirVinculo()
+
+  const dados = schemaDaEdicao.safeParse(edicao)
+  if (!z.uuid().safeParse(id).success || !dados.success) {
+    return { ok: false, erro: "Confira os itens do pedido." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("editar_pedido", {
+    p_pedido: id,
+    p_alteracoes: dados.data,
+  })
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/pedidos")
+  revalidatePath("/painel/caixa")
+  revalidatePath(`/pedidos/${id}`)
+  return { ok: true }
+}
+
+/**
+ * A loja lanca um pedido do zero: balcao, mesa ou entrega por telefone.
+ *
+ * O pedido nasce aceito, sem comissao, e com a conta feita pelo banco — as
+ * mesmas regras de preco, adicional e estoque do aplicativo
+ * (`lancar_pedido`).
+ */
+export async function lancarPedido(
+  lancamento: Lancamento,
+): Promise<{ ok: true; id: string } | { ok: false; erro: string }> {
+  const { vinculo } = await exigirVinculo()
+
+  const dados = schemaDoLancamento.safeParse(lancamento)
+  if (!dados.success) {
+    return { ok: false, erro: dados.error.issues[0]?.message ?? "Confira o pedido." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { data, error } = await supabase.rpc("lancar_pedido", {
+    p_restaurante: vinculo.restauranteId,
+    p_dados: dados.data,
+  })
+  if (error || !data) return { ok: false, erro: error?.message ?? "Não deu para lançar." }
+
+  revalidatePath("/painel/pedidos")
+  revalidatePath("/painel/caixa")
+  revalidatePath("/painel")
+  return { ok: true, id: data }
+}
+
 export async function abrirOuFecharLoja(aberto: boolean): Promise<ResultadoDaAcao> {
   const { vinculo } = await exigirVinculo()
   const supabase = await criarClienteDoServidor()
@@ -168,6 +271,7 @@ export async function confirmarPix(id: string): Promise<ResultadoDaAcao> {
   if (error) return { ok: false, erro: error.message }
 
   revalidatePath("/painel/pedidos")
+  revalidatePath("/painel/caixa")
   revalidatePath("/painel")
   return { ok: true }
 }

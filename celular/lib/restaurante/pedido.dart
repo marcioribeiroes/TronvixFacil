@@ -8,6 +8,9 @@ import '../dados/balcao.dart';
 import '../formato.dart';
 import '../modelos/modelos.dart';
 import '../tema.dart';
+import '../dados/edicao.dart';
+import 'caixa.dart';
+import 'editar_pedido.dart';
 
 class TelaPedidoDoBalcao extends StatefulWidget {
   const TelaPedidoDoBalcao({super.key, required this.pedido});
@@ -27,7 +30,17 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
     final destino = Balcao.proximoPasso(p);
 
     return Scaffold(
-      appBar: AppBar(title: Text('Pedido nº ${p.numero}')),
+      appBar: AppBar(
+        title: Text('Pedido nº ${p.numero}'),
+        actions: [
+          if (EdicaoDoPedido.podeMudar(p))
+            IconButton(
+              tooltip: 'Editar pedido',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _ocupado ? null : _editar,
+            ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
@@ -72,9 +85,11 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
             leading: const Icon(Icons.payments_outlined),
             title: Text(p.pagamento?.forma.rotulo ?? 'Pagamento'),
             subtitle: Text(
-              p.pagamento?.momento == MomentoDoPagamento.naEntrega
+              p.pagamento?.aReceber == true
                   ? 'Receber na entrega'
-                  : 'Pago pelo aplicativo',
+                  : p.pagamento?.momento == MomentoDoPagamento.naEntrega
+                      ? 'Recebido'
+                      : 'Pago pelo aplicativo',
             ),
             // Troco é informação de operação: quem monta a sacola precisa
             // separar o dinheiro antes de o entregador sair.
@@ -91,6 +106,16 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
                     ],
                   ),
           ),
+          // Receber é dinheiro, não etapa da cozinha: o botão fica junto do
+          // pagamento, e não na barra de baixo, que é de quem faz a comida.
+          if (p.pagamento?.aReceber == true)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: FilledButton.tonal(
+                onPressed: _ocupado ? null : _receber,
+                child: Text('Receber ${emReais(p.totalCentavos)}'),
+              ),
+            ),
           if (p.observacao != null && p.observacao!.isNotEmpty)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -142,6 +167,11 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
                         Text(i.nomeDoProduto,
                             style: const TextStyle(
                                 fontWeight: FontWeight.w700, fontSize: 15)),
+                        if (p.foiAcrescentado(i))
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Etiqueta('acrescentado', cor: Cores.marca),
+                          ),
                         for (final a in i.adicionais)
                           Text('+ ${a.nome}',
                               style: const TextStyle(
@@ -216,6 +246,30 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
     } finally {
       if (mounted) setState(() => _ocupado = false);
     }
+  }
+
+  /// Editar abre por cima; salvando, volta direto para a fila, que recarrega
+  /// o pedido com a conta nova.
+  Future<void> _editar() async {
+    final salvou = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => TelaEditarPedido(pedido: _pedido)),
+    );
+    if (salvou == true && mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _receber() async {
+    setState(() => _ocupado = true);
+    final recebeu = await receberPagamento(
+      context,
+      pedidoId: _pedido.id,
+      numero: _pedido.numero,
+      totalCentavos: _pedido.totalCentavos,
+      formaPedida: _pedido.pagamento?.forma,
+    );
+    if (!mounted) return;
+    setState(() => _ocupado = false);
+    // Volta para a fila, que recarrega — o mesmo caminho de avançar.
+    if (recebeu) Navigator.of(context).pop();
   }
 
   /// Recusar exige motivo.

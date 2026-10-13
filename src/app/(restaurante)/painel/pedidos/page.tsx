@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
+import Link from "next/link"
+import { Plus } from "lucide-react"
 
 import { ChaveDaLoja } from "@/components/painel/chave-da-loja"
+import { Button } from "@/components/ui/button"
 import { FilaDePedidos, type PedidoDaFila } from "@/components/painel/fila-de-pedidos"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { formatarReais } from "@/lib/dinheiro"
@@ -40,7 +43,7 @@ export default async function PaginaDePedidos() {
     supabase
       .from("orders")
       .select(
-        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, ready_forecast_at, order_items(id, product_name, quantity, notes), payments(method, timing, status), deliveries(status)",
+        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, customer_added_at, ready_forecast_at, order_items(id, product_name, quantity, notes, created_at), payments(method, timing, status), deliveries(status)",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .in("status", ABERTOS)
@@ -51,7 +54,7 @@ export default async function PaginaDePedidos() {
     supabase
       .from("orders")
       .select(
-        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, ready_forecast_at, order_items(id, product_name, quantity, notes), payments(method, timing, status), deliveries(status)",
+        "id, number, status, cancelled_by, cancellation_reason, fulfillment, table_label, customer_name, customer_phone, address_summary, address_district, notes, total_cents, created_at, customer_added_at, ready_forecast_at, order_items(id, product_name, quantity, notes, created_at), payments(method, timing, status), deliveries(status)",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .in("status", ["cancelled", "rejected"])
@@ -84,13 +87,20 @@ export default async function PaginaDePedidos() {
           </p>
         </div>
 
-        {loja ? (
-          <ChaveDaLoja
-            aberta={loja.is_open}
-            noHorario={loja.no_horario !== false}
-            podeMexer={vinculo.cargo !== "staff"}
-          />
-        ) : null}
+        <div className="flex flex-wrap items-start gap-3">
+          {/* O pedido que nao veio pelo aplicativo: balcao, telefone, garcom. */}
+          <Button render={<Link href="/painel/pedidos/novo" />}>
+            <Plus className="size-4" aria-hidden="true" />
+            Novo pedido
+          </Button>
+          {loja ? (
+            <ChaveDaLoja
+              aberta={loja.is_open}
+              noHorario={loja.no_horario !== false}
+              podeMexer={vinculo.cargo !== "staff"}
+            />
+          ) : null}
+        </div>
       </div>
 
       <dl className="grid grid-cols-3 gap-3 rounded-xl border bg-muted/40 p-4">

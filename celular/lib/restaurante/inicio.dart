@@ -14,8 +14,10 @@ import '../formato.dart';
 import '../modelos/modelos.dart';
 import '../sessao.dart';
 import '../tema.dart';
+import 'caixa.dart';
 import 'cardapio.dart';
 import 'entregadores.dart';
+import 'lancar_pedido.dart';
 import 'pedido.dart';
 
 class InicioDoRestaurante extends StatefulWidget {
@@ -116,7 +118,11 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
             ),
           PopupMenuButton<String>(
             onSelected: (acao) {
-              if (acao == 'cardapio') {
+              if (acao == 'caixa') {
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const TelaCaixa()))
+                    .then((_) => _carregar());
+              } else if (acao == 'cardapio') {
                 Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const TelaCardapioDoBalcao()));
               } else if (acao == 'entregadores') {
@@ -129,6 +135,7 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
               }
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(value: 'caixa', child: Text('Caixa')),
               const PopupMenuItem(value: 'cardapio', child: Text('Cardápio')),
               const PopupMenuItem(
                   value: 'entregadores', child: Text('Entregadores')),
@@ -140,6 +147,22 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
           ),
         ],
       ),
+      // O pedido que não veio pelo aplicativo: balcão, telefone, garçom.
+      floatingActionButton: _restaurante == null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () async {
+                final lancou = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        TelaLancarPedido(restaurante: _restaurante!),
+                  ),
+                );
+                if (lancou == true) _carregar();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Novo pedido'),
+            ),
       body: _carregando
           ? const Carregando()
           : _erro != null
@@ -249,6 +272,17 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
               const SizedBox(height: 8),
               Text(p.nomeDoCliente,
                   style: const TextStyle(fontWeight: FontWeight.w700)),
+              // O pedido já estava na fila; sem esta faixa, a sobremesa pedida
+              // pela mesa entrava num cartão que a cozinha já tinha olhado.
+              if (p.clienteAcrescentouEm != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Etiqueta(
+                    'A mesa pediu mais · ${haQuantoTempo(p.clienteAcrescentouEm!)}',
+                    cor: Cores.marca,
+                    forte: true,
+                  ),
+                ),
               Text(
                 // Na mesa, o destino É a informação: quem prepara precisa
                 // saber para onde o prato vai. Por isso o rótulo da mesa vem
@@ -269,9 +303,11 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
                   // é nele que o balcão toca.
                   Expanded(
                     child: Text(
-                      p.pagamento?.momento == MomentoDoPagamento.naEntrega
+                      p.pagamento?.aReceber == true
                           ? 'Receber ${emReais(p.totalCentavos)} ${p.tipo == TipoDeEntrega.mesa ? 'na mesa' : p.tipo == TipoDeEntrega.retirada ? 'no balcão' : 'na entrega'}'
-                          : 'Pago · ${emReais(p.totalCentavos)}',
+                          : p.pagamento?.momento == MomentoDoPagamento.naEntrega
+                              ? 'Recebido · ${emReais(p.totalCentavos)}'
+                              : 'Pago · ${emReais(p.totalCentavos)}',
                       style: const TextStyle(fontSize: 13),
                     ),
                   ),

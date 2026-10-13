@@ -21,6 +21,7 @@ import {
   Tag,
   Users,
   UtensilsCrossed,
+  Wallet,
   type LucideIcon,
 } from "lucide-react"
 
@@ -59,6 +60,7 @@ const ICONES = {
   produtos: Package,
   adicionais: PlusSquare,
   mesas: QrCode,
+  caixa: Wallet,
 } as const satisfies Record<string, LucideIcon>
 
 export type NomeDoIcone = keyof typeof ICONES

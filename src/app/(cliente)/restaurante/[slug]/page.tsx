@@ -6,6 +6,7 @@ import { CardapioDoCliente } from "@/components/cliente/cardapio-do-cliente"
 import { Badge } from "@/components/ui/badge"
 import { formatarReais } from "@/lib/dinheiro"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
+import { carregarCardapio } from "@/modules/cardapio/carregar"
 
 export async function generateMetadata({
   params,
@@ -34,32 +35,7 @@ export default async function PaginaDoRestaurante({
   // endereco que o publico nao deve enxergar.
   if (!restaurante) notFound()
 
-  const [{ data: categorias }, { data: produtos }, { data: grupos }] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("id, name")
-      .eq("restaurant_id", restaurante.id)
-      .eq("is_active", true)
-      .is("deleted_at", null)
-      .order("position"),
-    supabase
-      .from("products")
-      .select(
-        "id, category_id, name, description, image_url, price_cents, promo_price_cents, promo_starts_at, promo_ends_at, is_available, track_stock, stock_quantity",
-      )
-      .eq("restaurant_id", restaurante.id)
-      .is("deleted_at", null)
-      .order("position"),
-    supabase
-      .from("addon_groups")
-      .select(
-        "id, product_id, name, is_required, min_select, max_select, addons(id, name, price_cents, is_available, deleted_at)",
-      )
-      .eq("restaurant_id", restaurante.id)
-      .eq("is_active", true)
-      .is("deleted_at", null)
-      .order("position"),
-  ])
+  const { secoes, grupos } = await carregarCardapio(restaurante.id)
 
   const entrega = restaurante.avg_prep_minutes + restaurante.avg_delivery_minutes
 
@@ -126,24 +102,8 @@ export default async function PaginaDoRestaurante({
         <CardapioDoCliente
           restauranteId={restaurante.id}
           aberto={restaurante.aberto_agora ?? false}
-          secoes={(categorias ?? [])
-            .map((c) => ({
-              id: c.id,
-              nome: c.name,
-              produtos: (produtos ?? []).filter((p) => p.category_id === c.id),
-            }))
-            .filter((s) => s.produtos.length > 0)}
-          grupos={(grupos ?? []).map((g) => ({
-            id: g.id,
-            produtoId: g.product_id,
-            nome: g.name,
-            obrigatorio: g.is_required,
-            minimo: g.min_select,
-            maximo: g.max_select,
-            adicionais: (g.addons ?? [])
-              .filter((a) => a.deleted_at === null && a.is_available)
-              .map((a) => ({ id: a.id, nome: a.name, precoCentavos: a.price_cents })),
-          }))}
+          secoes={secoes}
+          grupos={grupos}
         />
       </div>
     </div>

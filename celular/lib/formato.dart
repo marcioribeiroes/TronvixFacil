@@ -14,6 +14,42 @@ final _real = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
 String emReais(int centavos) => _real.format(centavos / 100);
 
+/// O que alguém digitou num campo de valor, em centavos.
+///
+/// Aceita como se fala: "150", "150,00", "R\$ 1.234,56", "27.90". Converte
+/// por texto, sem passar por `double` — é o único sentido em que dinheiro
+/// entra no aplicativo, e é justamente onde o arredondamento morderia. Devolve
+/// null quando não dá para entender.
+int? paraCentavos(String entrada) {
+  final limpo = entrada.trim().replaceAll(RegExp(r'[R$\s]'), '');
+  if (limpo.isEmpty) return null;
+
+  String inteiro;
+  var decimal = '';
+  if (limpo.contains(',')) {
+    // "1.234,56": o ponto é separador de milhar.
+    final partes = limpo.replaceAll('.', '').split(',');
+    if (partes.length != 2) return null;
+    inteiro = partes[0];
+    decimal = partes[1];
+  } else {
+    final partes = limpo.split('.');
+    // "27.90" é decimal; "1.234" é milhar.
+    if (partes.length == 2 && partes[1].length <= 2) {
+      inteiro = partes[0];
+      decimal = partes[1];
+    } else {
+      inteiro = partes.join();
+    }
+  }
+
+  if (inteiro.isEmpty) inteiro = '0';
+  if (!RegExp(r'^\d+$').hasMatch(inteiro)) return null;
+  if (!RegExp(r'^\d{0,2}$').hasMatch(decimal)) return null;
+
+  return int.parse(inteiro) * 100 + int.parse(decimal.padRight(2, '0'));
+}
+
 /// Para rótulos curtos onde o "R$" já está claro pelo contexto.
 String emReaisCurto(int centavos) =>
     NumberFormat('#,##0.00', 'pt_BR').format(centavos / 100);

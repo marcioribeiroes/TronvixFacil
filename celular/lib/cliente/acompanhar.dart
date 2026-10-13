@@ -10,6 +10,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../dados/edicao.dart';
+import 'pedir_mais.dart';
 import '../comum/mapa.dart';
 import '../comum/sons.dart';
 import '../comum/widgets.dart';
@@ -319,7 +321,28 @@ class _TelaAcompanharState extends State<TelaAcompanhar> {
           ),
         ],
       ),
-      bottomNavigationBar: Pedidos.clientePodeCancelar(p.status)
+      bottomNavigationBar: EdicaoDoPedido.clientePodePedirMais(p)
+          ? BarraDeAcao(
+              acima: Pedidos.clientePodeCancelar(p.status)
+                  ? OutlinedButton(
+                      onPressed: () => _cancelar(p),
+                      style:
+                          OutlinedButton.styleFrom(foregroundColor: Cores.perigo),
+                      child: const Text('Cancelar pedido'),
+                    )
+                  : null,
+              filho: FilledButton.icon(
+                onPressed: () async {
+                  final enviou = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(builder: (_) => TelaPedirMais(pedido: p)),
+                  );
+                  if (enviou == true) _carregar();
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Pedir mais'),
+              ),
+            )
+          : Pedidos.clientePodeCancelar(p.status)
           ? BarraDeAcao(
               filho: OutlinedButton(
                 onPressed: () => _cancelar(p),

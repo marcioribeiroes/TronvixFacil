@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState, useTransition } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Ban, Bike, Clock, Printer, StickyNote, Store, Wallet,
+import { Ban, Bike, Clock, Pencil, Printer, StickyNote, Store, Wallet,
   UtensilsCrossed,
 } from "lucide-react"
 
@@ -20,6 +21,8 @@ import {
   type TipoDeEntrega,
 } from "@/modules/pedidos/maquina-de-estados"
 import { AvisoDePedidos } from "@/components/painel/aviso-de-pedidos"
+import { ReceberPagamento } from "@/components/painel/receber-pagamento"
+import { pedidoEditavel } from "@/modules/pedidos/edicao"
 import {
   avancarPedido,
   chamarEntregador,
@@ -42,7 +45,15 @@ export type PedidoDaFila = {
   created_at: string
   /** Promessa de quando a comida fica pronta. Nulo enquanto ninguém chamou. */
   ready_forecast_at: string | null
-  order_items: { id: string; product_name: string; quantity: number; notes: string | null }[]
+  /** Quando o cliente da mesa pediu mais pela ultima vez. */
+  customer_added_at: string | null
+  order_items: {
+    id: string
+    product_name: string
+    quantity: number
+    notes: string | null
+    created_at: string
+  }[]
   payments: { method: string; timing: string; status: string }[]
   /**
    * A entrega deste pedido. Vem como objeto, não lista: `deliveries.order_id`
@@ -192,6 +203,38 @@ export function FilaDePedidos({
       })
     }
   }, [idsCancelados, somLigado])
+
+  /**
+   * O cliente da mesa pediu mais.
+   *
+   * O pedido já estava na fila, então nada "chega" — só o carimbo
+   * `customer_added_at` muda. Sem este aviso, a sobremesa pedida pela mesa
+   * entrava num cartão que a cozinha já tinha olhado, e ficava lá.
+   */
+  const pedidosAMais = pedidos
+    .filter((p) => p.customer_added_at)
+    .map((p) => `${p.id}@${p.customer_added_at}`)
+    .join(",")
+  const pedidosAMaisVistos = useRef<Set<string> | null>(null)
+
+  useEffect(() => {
+    const marcas = pedidosAMais ? pedidosAMais.split(",") : []
+    const anterior = pedidosAMaisVistos.current
+    pedidosAMaisVistos.current = new Set(marcas)
+
+    if (anterior === null) return
+    const novas = marcas.filter((m) => !anterior.has(m))
+    if (novas.length === 0) return
+
+    if (somLigado) tocarSino()
+
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("A mesa pediu mais", {
+        body: "Itens novos num pedido que já estava na fila.",
+        tag: "pedido-a-mais",
+      })
+    }
+  }, [pedidosAMais, somLigado])
 
   /**
    * Insiste enquanto ninguém atende.
@@ -485,6 +528,13 @@ function CartaoDoPedido({
 
   const pagamento = p.payments[0]
   const naEntrega = pagamento?.timing === "on_delivery"
+  const editavel = pedidoEditavel(situacao, pagamento)
+  // Item que entrou depois do fechamento: os do fechamento nascem na mesma
+  // transacao do pedido, com o mesmo carimbo.
+  const acrescentado = (i: { created_at: string }) =>
+    Date.parse(i.created_at) > Date.parse(p.created_at)
+  // Pago na entrega e ja recebido: o dinheiro esta no caixa, nao falta nada.
+  const recebido = naEntrega && pagamento.status === "paid"
 
   // Pix pelo site, ainda não confirmado. É o único caso em que o pedido está
   // parado esperando a loja, e não a cozinha.
@@ -557,6 +607,15 @@ function CartaoDoPedido({
 
       <p className="mt-2 font-semibold">{p.customer_name}</p>
 
+      {p.customer_added_at ? (
+        <p className="mt-2 rounded-lg bg-marca-suave px-2.5 py-1.5 text-xs font-semibold text-marca-forte">
+          A mesa pediu mais ·{" "}
+          {minutosDesde(p.customer_added_at) === 0
+            ? "agora"
+            : `há ${minutosDesde(p.customer_added_at)} min`}
+        </p>
+      ) : null}
+
       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           {tipo === "delivery" ? (
@@ -589,6 +648,11 @@ function CartaoDoPedido({
             <span className="font-bold text-marca">{i.quantity}×</span>
             <span className="flex-1">
               {i.product_name}
+              {acrescentado(i) ? (
+                <Badge variant="outline" className="ml-2 border-marca text-marca">
+                  acrescentado
+                </Badge>
+              ) : null}
               {i.notes ? (
                 <em className="block text-xs font-semibold not-italic text-marca-forte">
                   “{i.notes}”
@@ -632,9 +696,14 @@ function CartaoDoPedido({
       <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
         <span className="inline-flex items-center gap-1.5 text-sm">
           <Wallet className="size-4 text-muted-foreground" aria-hidden="true" />
-          {naEntrega ? (
+          {recebido ? (
             <>
-              Receber {tipo === "dine_in" ? "na mesa " : ""}
+              Recebido · <strong>{formatarReais(p.total_cents)}</strong> em{" "}
+              {FORMA[pagamento.method] ?? pagamento.method}
+            </>
+          ) : naEntrega ? (
+            <>
+              A receber {tipo === "dine_in" ? "na mesa " : ""}·{" "}
               <strong>{formatarReais(p.total_cents)}</strong> em{" "}
               {FORMA[pagamento.method] ?? pagamento.method}
             </>
@@ -661,6 +730,16 @@ function CartaoDoPedido({
           >
             <Printer className="size-4" aria-hidden="true" />
           </Button>
+          {editavel ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Editar o pedido ${p.number}`}
+              render={<Link href={`/painel/pedidos/${p.id}/editar`} />}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </Button>
+          ) : null}
           {novo || esperandoPix ? (
             <Button
               variant="outline"
@@ -681,6 +760,19 @@ function CartaoDoPedido({
           ) : null}
         </div>
       </footer>
+
+      {/* Receber também fica fora da linha: é dinheiro, não etapa da cozinha.
+          O pedido continua andando no quadro, e o pagamento vai para o caixa. */}
+      {naEntrega && !recebido ? (
+        <div className="mt-3 rounded-lg border border-dashed p-3">
+          <ReceberPagamento
+            pedidoId={p.id}
+            numero={p.number}
+            totalCents={p.total_cents}
+            formaPedida={pagamento.method}
+          />
+        </div>
+      ) : null}
 
       {/* Chamar entregador fica FORA da linha de botões de propósito: não é o
           próximo passo do pedido, é uma segunda decisão que corre em paralelo

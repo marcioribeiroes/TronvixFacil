@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 32   Enums: 14   Funcoes: 14
+// Tabelas: 33   Enums: 15   Funcoes: 22
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -370,6 +370,67 @@ export interface Database {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      cash_movements: {
+        Row: {
+          id: string
+          restaurant_id: string
+          type: Database["public"]["Enums"]["cash_movement_type"]
+          amount_cents: number
+          note: string | null
+          business_date: string
+          created_by: string | null
+          created_at: string
+          cancelled_at: string | null
+          cancelled_by: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          type: Database["public"]["Enums"]["cash_movement_type"]
+          amount_cents: number
+          note?: string | null
+          business_date: string
+          created_by?: string | null
+          created_at?: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          type?: Database["public"]["Enums"]["cash_movement_type"]
+          amount_cents?: number
+          note?: string | null
+          business_date?: string
+          created_by?: string | null
+          created_at?: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_movements_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_movements_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           }
         ]
@@ -937,6 +998,8 @@ export interface Database {
           table_label: string | null
           cancelled_by: string | null
           ready_forecast_at: string | null
+          customer_added_at: string | null
+          placed_by_store: boolean
         }
         Insert: {
           id?: string
@@ -974,6 +1037,8 @@ export interface Database {
           table_label?: string | null
           cancelled_by?: string | null
           ready_forecast_at?: string | null
+          customer_added_at?: string | null
+          placed_by_store?: boolean
         }
         Update: {
           id?: string
@@ -1011,6 +1076,8 @@ export interface Database {
           table_label?: string | null
           cancelled_by?: string | null
           ready_forecast_at?: string | null
+          customer_added_at?: string | null
+          placed_by_store?: boolean
         }
         Relationships: [
           {
@@ -1895,6 +1962,12 @@ export interface Database {
         }
         Returns: { id: string; slug: string }[]
       }
+      cancelar_movimento_de_caixa: {
+        Args: {
+          p_movimento: string
+        }
+        Returns: undefined
+      }
       cancelar_pedido: {
         Args: {
           p_pedido: string
@@ -1923,6 +1996,13 @@ export interface Database {
         }
         Returns: number
       }
+      editar_pedido: {
+        Args: {
+          p_pedido: string
+          p_alteracoes: Json
+        }
+        Returns: undefined
+      }
       fechar_pedido: {
         Args: {
           p_cart_id: string
@@ -1938,11 +2018,32 @@ export interface Database {
         }
         Returns: string
       }
+      lancar_pedido: {
+        Args: {
+          p_restaurante: string
+          p_dados: Json
+        }
+        Returns: string
+      }
+      movimento_do_caixa: {
+        Args: {
+          p_restaurante: string
+          p_dia?: string
+        }
+        Returns: Json
+      }
       onde_esta_o_entregador: {
         Args: {
           p_order: string
         }
         Returns: Json
+      }
+      pedir_mais_na_mesa: {
+        Args: {
+          p_pedido: string
+          p_itens: Json
+        }
+        Returns: undefined
       }
       publicar_posicao: {
         Args: {
@@ -1950,6 +2051,28 @@ export interface Database {
           p_longitude: number
         }
         Returns: undefined
+      }
+      receber_pagamento: {
+        Args: {
+          p_pedido: string
+          p_forma: Database["public"]["Enums"]["payment_method"]
+        }
+        Returns: undefined
+      }
+      registrar_fundo_de_caixa: {
+        Args: {
+          p_restaurante: string
+          p_valor_cents: number
+        }
+        Returns: string
+      }
+      registrar_sangria: {
+        Args: {
+          p_restaurante: string
+          p_valor_cents: number
+          p_motivo: string
+        }
+        Returns: string
       }
       simular_cupom: {
         Args: {
@@ -1962,6 +2085,7 @@ export interface Database {
       }
     }
     Enums: {
+      cash_movement_type: "opening_float" | "withdrawal"
       coupon_scope: "platform" | "restaurant"
       courier_availability: "offline" | "online" | "on_delivery"
       courier_status: "pending" | "approved" | "suspended"
