@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'ambiente.dart';
 import 'cliente/inicio.dart';
+import 'comum/avisos_no_celular.dart';
 import 'comum/sons.dart';
 import 'comum/widgets.dart';
 import 'dados/carrinho.dart';
@@ -29,6 +30,9 @@ Future<void> prepararApp() async {
 
 void main() async {
   await prepararApp();
+  // Fora de `prepararApp` de propósito: o teste de widget passa por lá, e no
+  // teste não há Firebase.
+  await AvisosNoCelular.iniciar();
   runApp(const AppTronvixFacil());
 }
 
@@ -44,6 +48,7 @@ class AppTronvixFacil extends StatelessWidget {
         title: Ambiente.nomeDaMarca,
         debugShowCheckedModeBanner: false,
         theme: tema,
+        navigatorKey: AvisosNoCelular.navegador,
         home: const Porta(),
       );
 }
@@ -74,12 +79,16 @@ class _PortaState extends State<Porta> {
     // Uma sessão gravada no aparelho já vem restaurada pelo SDK; o que falta é
     // saber quem é a pessoa no banco, que é o que decide o fluxo.
     await Sessao.instancia.carregar();
-    if (Sessao.instancia.autenticado) await Carrinho.instancia.carregar();
+    if (Sessao.instancia.autenticado) {
+      await Carrinho.instancia.carregar();
+      unawaited(AvisosNoCelular.registrar());
+    }
 
     autenticacao.onAuthStateChange.listen((evento) async {
       await Sessao.instancia.carregar();
       if (Sessao.instancia.autenticado) {
         await Carrinho.instancia.carregar();
+        unawaited(AvisosNoCelular.registrar());
       } else {
         Carrinho.instancia.esquecer();
       }

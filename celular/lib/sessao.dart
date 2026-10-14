@@ -13,6 +13,7 @@
 /// atende o caso urgente.
 library;
 
+import 'comum/avisos_no_celular.dart';
 import 'package:flutter/foundation.dart';
 
 import 'dart:async';
@@ -205,6 +206,8 @@ class Sessao extends ChangeNotifier {
   }
 
   Future<void> sair() async {
+    // Antes do signOut: depois dele, o banco já não sabe de quem é o aparelho.
+    await AvisosNoCelular.esquecer();
     await executar(() => autenticacao.signOut());
     _perfil = null;
     _entregador = null;

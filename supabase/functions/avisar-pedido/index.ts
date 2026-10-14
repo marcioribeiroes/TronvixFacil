@@ -15,6 +15,11 @@
  *
  * Entra por webhook do banco, com o corpo padrao do Supabase:
  *   { type: "INSERT" | "UPDATE", record: { ... }, old_record: { ... } }
+ *
+ * Dois canais para as mesmas pessoas: o navegador (Web Push, `push_subscriptions`)
+ * e o celular (Firebase Cloud Messaging, `device_tokens`). Sem a conta de
+ * servico do Firebase configurada, o celular fica de fora e o navegador segue
+ * como antes.
  */
 
 import webpush from "npm:web-push@3.6.7"
@@ -32,6 +37,131 @@ const supabase = createClient(
   // age em nome de nenhum usuario.
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 )
+
+// ---------------------------------------------------------------------------
+// Firebase Cloud Messaging (celular)
+//
+// A API v1 pede um token OAuth da conta de servico do projeto. O token e
+// gerado aqui, assinando um JWT com a chave privada (RS256), e vale uma hora —
+// guardado enquanto a funcao estiver quente.
+// ---------------------------------------------------------------------------
+
+type ContaDeServico = { project_id: string; client_email: string; private_key: string }
+
+const CONTA_FIREBASE: ContaDeServico | null = (() => {
+  const bruto = Deno.env.get("FIREBASE_CONTA_DE_SERVICO")
+  if (!bruto) return null
+  try {
+    return JSON.parse(bruto) as ContaDeServico
+  } catch {
+    return null
+  }
+})()
+
+let tokenGoogle: { valor: string; expiraEm: number } | null = null
+
+const base64url = (dados: ArrayBuffer | Uint8Array | string) => {
+  const bytes =
+    typeof dados === "string" ? new TextEncoder().encode(dados) : new Uint8Array(dados)
+  let texto = ""
+  for (const b of bytes) texto += String.fromCharCode(b)
+  return btoa(texto).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+}
+
+async function tokenDoFirebase(conta: ContaDeServico): Promise<string> {
+  const agora = Math.floor(Date.now() / 1000)
+  if (tokenGoogle && tokenGoogle.expiraEm - 60 > agora) return tokenGoogle.valor
+
+  const cabecalho = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }))
+  const corpo = base64url(
+    JSON.stringify({
+      iss: conta.client_email,
+      scope: "https://www.googleapis.com/auth/firebase.messaging",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: agora,
+      exp: agora + 3600,
+    }),
+  )
+
+  const pem = conta.private_key
+    .replace(/-----[^-]+-----/g, "")
+    .replace(/\s+/g, "")
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0))
+  const chave = await crypto.subtle.importKey(
+    "pkcs8",
+    der,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  )
+  const assinatura = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    chave,
+    new TextEncoder().encode(`${cabecalho}.${corpo}`),
+  )
+
+  const resposta = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${cabecalho}.${corpo}.${base64url(assinatura)}`,
+    }),
+  })
+  if (!resposta.ok) throw new Error(`oauth ${resposta.status}`)
+  const json = (await resposta.json()) as { access_token: string; expires_in: number }
+  tokenGoogle = { valor: json.access_token, expiraEm: agora + json.expires_in }
+  return json.access_token
+}
+
+/**
+ * Manda para cada aparelho. Devolve quantos chegaram e quais tokens morreram
+ * (app desinstalado, token trocado) — esses saem da tabela.
+ */
+async function enviarAoCelular(
+  tokens: { id: string; token: string }[],
+  aviso: Aviso,
+  pedidoId: string,
+): Promise<{ entregues: number; mortos: string[] }> {
+  if (!CONTA_FIREBASE || tokens.length === 0) return { entregues: 0, mortos: [] }
+
+  const acesso = await tokenDoFirebase(CONTA_FIREBASE)
+  const url = `https://fcm.googleapis.com/v1/projects/${CONTA_FIREBASE.project_id}/messages:send`
+
+  let entregues = 0
+  const mortos: string[] = []
+
+  for (const t of tokens) {
+    const resposta = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${acesso}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: {
+          token: t.token,
+          notification: { title: aviso.titulo, body: aviso.corpo },
+          // O app abre no pedido certo ao tocar no aviso.
+          data: { url: aviso.url, pedido: pedidoId },
+          // Prioridade alta: pedido novo e para tocar agora, nao no proximo
+          // lote que o Android achar conveniente.
+          android: { priority: "HIGH", notification: { sound: "default" } },
+          apns: { payload: { aps: { sound: "default" } } },
+        },
+      }),
+    })
+
+    if (resposta.ok) {
+      entregues++
+      continue
+    }
+    // 404 (UNREGISTERED) e 400 de token invalido: o aparelho nao existe mais.
+    const erro = await resposta.text()
+    if (resposta.status === 404 || erro.includes("UNREGISTERED") || erro.includes("registration token")) {
+      mortos.push(t.id)
+    }
+  }
+
+  return { entregues, mortos }
+}
 
 const emReais = (centavos: number) =>
   (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -201,7 +331,27 @@ Deno.serve(async (req) => {
       await supabase.from("push_subscriptions").delete().in("id", mortas)
     }
 
-    return Response.json({ entregues, removidas: mortas.length })
+    // O celular. Um erro aqui nao pode derrubar o que o navegador ja entregou.
+    let noCelular = { entregues: 0, mortos: [] as string[] }
+    try {
+      const { data: aparelhos } = await supabase
+        .from("device_tokens")
+        .select("id, token")
+        .in("user_id", alvo.usuarios)
+      noCelular = await enviarAoCelular(aparelhos ?? [], alvo.aviso, pedido.id)
+      if (noCelular.mortos.length > 0) {
+        await supabase.from("device_tokens").delete().in("id", noCelular.mortos)
+      }
+    } catch (e) {
+      console.error("celular:", e instanceof Error ? e.message : e)
+    }
+
+    return Response.json({
+      entregues,
+      removidas: mortas.length,
+      no_celular: noCelular.entregues,
+      aparelhos_removidos: noCelular.mortos.length,
+    })
   } catch (e) {
     return new Response(`erro: ${e instanceof Error ? e.message : e}`, { status: 500 })
   }

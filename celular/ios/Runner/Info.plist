@@ -71,6 +71,10 @@
 	     aponta o celular para a mesa. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Para ler o QR Code da mesa e você pedir pelo próprio celular.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>O Tronvix Fácil usa sua localização para mostrar no mapa onde você está em relação à loja e ao cliente durante a entrega.</string>
 </dict>

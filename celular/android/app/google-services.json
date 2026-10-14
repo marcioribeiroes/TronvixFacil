@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "399125287586",
+    "project_id": "tronvix-facil",
+    "storage_bucket": "tronvix-facil.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:399125287586:android:33a3eff1280a77737a7dfb",
+        "android_client_info": {
+          "package_name": "br.com.tronvix.tronvix_facil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCR81BvX119BekMt5vqsE6tTAZz1lHUT-s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
