@@ -1,10 +1,11 @@
 import Link from "next/link"
-import { MapPin, Search, ShoppingCart } from "lucide-react"
+import { LayoutDashboard, LogOut, MapPin, Search, ShoppingCart } from "lucide-react"
 
 import { BarraInferior } from "@/components/navegacao/barra-inferior"
 import { LogoTronvixFacil } from "@/components/marca/logo"
 import { Button } from "@/components/ui/button"
-import { obterContexto } from "@/modules/auth/sessao"
+import { sair } from "@/modules/auth/acoes"
+import { obterContexto, rotaInicialDe } from "@/modules/auth/sessao"
 import { FaixaDaMesa } from "@/components/cliente/faixa-da-mesa"
 import { mesaAtual } from "@/modules/cliente/mesa"
 
@@ -75,7 +76,30 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
             <ShoppingCart className="size-5" />
           </Button>
 
-          {contexto ? null : (
+          {/* Logado, o cabecalho leva ao trabalho e deixa sair. Sem isto, no
+              computador nao havia nem um nem outro: a barra de baixo, que tem
+              o perfil, so existe no celular, e o dono de loja que caia na
+              vitrine nao achava o caminho do painel. */}
+          {contexto ? (
+            <div className="hidden items-center gap-2 sm:flex">
+              {rotaInicialDe(contexto) !== "/" ? (
+                <Button size="sm" render={<Link href={rotaInicialDe(contexto)} />}>
+                  <LayoutDashboard className="size-4" aria-hidden="true" />
+                  {contexto.ehAdminDaPlataforma
+                    ? "Administração"
+                    : contexto.vinculos.length > 0
+                      ? "Painel da loja"
+                      : "Entregas"}
+                </Button>
+              ) : null}
+              <form action={sair}>
+                <Button type="submit" size="sm" variant="ghost">
+                  <LogOut className="size-4" aria-hidden="true" />
+                  Sair
+                </Button>
+              </form>
+            </div>
+          ) : (
             <Button size="sm" className="hidden sm:inline-flex" render={<Link href="/entrar" />}>
               Entrar
             </Button>

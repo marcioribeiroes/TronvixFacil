@@ -1,6 +1,9 @@
 import { SidebarDoPainel, type ItemDeMenu } from "@/components/navegacao/sidebar-do-painel"
 import { CabecalhoDoPainel } from "@/components/navegacao/cabecalho-do-painel"
+import { LifeBuoy } from "lucide-react"
+
 import { exigirVinculo } from "@/modules/auth/sessao"
+import { sairDoSuporte } from "@/modules/auth/suporte"
 
 /**
  * Moldura do painel do restaurante.
@@ -33,9 +36,14 @@ const MENU_DA_GESTAO: ItemDeMenu[] = [
  * sim nao oferecer botao que a pessoa nao pode usar.
  */
 const MENU_DO_ATENDENTE: ItemDeMenu[] = MENU_DA_GESTAO.filter((item) =>
-  ["/painel", "/painel/pedidos", "/painel/caixa", "/painel/cardapio", "/painel/entregas", "/painel/mesas"].includes(
-    item.href,
-  ),
+  [
+    "/painel",
+    "/painel/pedidos",
+    "/painel/caixa",
+    "/painel/cardapio",
+    "/painel/entregas",
+    "/painel/mesas",
+  ].includes(item.href),
 )
 
 export default async function LayoutDoPainel({ children }: LayoutProps<"/painel">) {
@@ -45,25 +53,46 @@ export default async function LayoutDoPainel({ children }: LayoutProps<"/painel"
   return (
     <div className="flex min-h-dvh bg-muted/40 print:block print:bg-white">
       <div className="contents print:hidden">
-      <SidebarDoPainel
-        itens={ehGestao ? MENU_DA_GESTAO : MENU_DO_ATENDENTE}
-        legenda="Painel do Restaurante"
-        rodape={
-          <div className="mx-3 mb-2 rounded-md bg-sidebar-accent px-3 py-2.5">
-            <p className="truncate text-sm font-semibold text-white">{vinculo.nome}</p>
-            <p className="text-[11px] text-white/50">
-              {vinculo.cargo === "owner"
-                ? "Proprietário"
-                : vinculo.cargo === "manager"
-                  ? "Gerente"
-                  : "Atendente"}
-            </p>
-          </div>
-        }
-      />
+        <SidebarDoPainel
+          itens={ehGestao ? MENU_DA_GESTAO : MENU_DO_ATENDENTE}
+          legenda="Painel do Restaurante"
+          rodape={
+            <div className="mx-3 mb-2 rounded-md bg-sidebar-accent px-3 py-2.5">
+              <p className="truncate text-sm font-semibold text-white">{vinculo.nome}</p>
+              <p className="text-[11px] text-white/50">
+                {vinculo.suporte
+                  ? "Suporte Tronvix"
+                  : vinculo.cargo === "owner"
+                    ? "Proprietário"
+                    : vinculo.cargo === "manager"
+                      ? "Gerente"
+                      : "Atendente"}
+              </p>
+            </div>
+          }
+        />
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* Fixa e impossivel de ignorar: quem da suporte tem de saber, a cada
+            tela, em qual loja esta mexendo — e sair dali com um clique. */}
+        {vinculo.suporte ? (
+          <div className="sticky top-0 z-40 flex flex-wrap items-center gap-x-3 gap-y-1 bg-amber-500 px-4 py-2 text-sm font-semibold text-amber-950 print:hidden md:px-6">
+            <LifeBuoy className="size-4 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              Modo suporte · {vinculo.nome}. O que você fizer aqui vale para a loja, e fica
+              registrado.
+            </span>
+            <form action={sairDoSuporte}>
+              <button
+                type="submit"
+                className="rounded-md bg-amber-950 px-3 py-1 text-xs font-bold text-amber-50 hover:bg-amber-900"
+              >
+                Sair do modo suporte
+              </button>
+            </form>
+          </div>
+        ) : null}
         <div className="print:hidden">
           <CabecalhoDoPainel
             titulo={vinculo.nome}

@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 33   Enums: 15   Funcoes: 22
+// Tabelas: 34   Enums: 15   Funcoes: 24
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -1936,6 +1936,45 @@ export interface Database {
           }
         ]
       }
+      support_sessions: {
+        Row: {
+          id: string
+          restaurant_id: string
+          admin_id: string | null
+          started_at: string
+          ended_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          admin_id?: string | null
+          started_at?: string
+          ended_at?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          admin_id?: string | null
+          started_at?: string
+          ended_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_sessions_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -2002,6 +2041,12 @@ export interface Database {
           p_alteracoes: Json
         }
         Returns: undefined
+      }
+      entrar_como_suporte: {
+        Args: {
+          p_restaurante: string
+        }
+        Returns: string
       }
       fechar_pedido: {
         Args: {
@@ -2073,6 +2118,12 @@ export interface Database {
           p_motivo: string
         }
         Returns: string
+      }
+      sair_do_suporte: {
+        Args: {
+          [chave: string]: never
+        }
+        Returns: undefined
       }
       simular_cupom: {
         Args: {

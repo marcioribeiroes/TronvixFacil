@@ -1,10 +1,12 @@
 import "server-only"
 
 import { cache } from "react"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { supabaseConfigurado } from "@/lib/ambiente"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
+import { COOKIE_DO_SUPORTE } from "@/modules/auth/suporte-cookie"
 import type { Enums, Tabelas } from "@/types/banco"
 
 /**
@@ -23,6 +25,8 @@ export type Vinculo = {
   slug: string
   situacao: Enums<"restaurant_status">
   logoUrl: string | null
+  /** A equipe da plataforma no painel da loja, em modo suporte. */
+  suporte?: boolean
 }
 
 export type ContextoDoUsuario = {
@@ -118,6 +122,11 @@ export async function exigirUsuario(destino?: string): Promise<ContextoDoUsuario
 export async function exigirVinculo(restauranteId?: string) {
   const contexto = await exigirUsuario("/painel")
 
+  // Modo suporte vem antes do vinculo proprio: o administrador que tambem e
+  // dono de uma loja, quando entra como suporte em OUTRA, tem de ver a outra.
+  const suporte = await vinculoDeSuporte(contexto)
+  if (suporte) return { contexto, vinculo: suporte }
+
   const vinculo = restauranteId
     ? contexto.vinculos.find((v) => v.restauranteId === restauranteId)
     : contexto.vinculos[0]
@@ -130,6 +139,53 @@ export async function exigirVinculo(restauranteId?: string) {
 
   return { contexto, vinculo }
 }
+
+/**
+ * A loja em que a equipe da plataforma esta dando suporte, se houver.
+ *
+ * Tres coisas tem de valer juntas: a pessoa e administradora AGORA, o cookie
+ * aponta uma loja, e ha sessao de suporte aberta no banco para essa loja. Se
+ * qualquer uma faltar, nao ha suporte — o cookie sozinho nao abre nada.
+ *
+ * Entra como gerente: faz o que a gestao faz (cardapio, caixa, pedidos), mas
+ * nao o que e so do proprietario, como apagar a loja ou mexer na equipe.
+ */
+const vinculoDeSuporte = cache(async (contexto: ContextoDoUsuario): Promise<Vinculo | null> => {
+  if (!contexto.ehAdminDaPlataforma) return null
+
+  const restauranteId = (await cookies()).get(COOKIE_DO_SUPORTE)?.value
+  if (!restauranteId) return null
+
+  const supabase = await criarClienteDoServidor()
+  const [{ data: sessao }, { data: loja }] = await Promise.all([
+    supabase
+      .from("support_sessions")
+      .select("id")
+      .eq("admin_id", contexto.id)
+      .eq("restaurant_id", restauranteId)
+      .is("ended_at", null)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("restaurants")
+      .select("id, name, slug, status, logo_url")
+      .eq("id", restauranteId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+  ])
+
+  if (!sessao || !loja) return null
+
+  return {
+    restauranteId: loja.id,
+    cargo: "manager",
+    nome: loja.name,
+    slug: loja.slug,
+    situacao: loja.status,
+    logoUrl: loja.logo_url,
+    suporte: true,
+  }
+})
 
 /** Exige cargo de gestao: cardapio, equipe, financeiro e configuracoes. */
 export async function exigirGestao(restauranteId?: string) {

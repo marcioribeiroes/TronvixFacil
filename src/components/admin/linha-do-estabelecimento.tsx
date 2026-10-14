@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Check, Pause, Play, Store, X } from "lucide-react"
+import { Check, LifeBuoy, Pause, Play, Store, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import {
   decidirSobreEstabelecimento,
   mudarComissao,
 } from "@/modules/admin/restaurantes"
+import { entrarComoSuporte } from "@/modules/auth/suporte"
 
 type Estabelecimento = {
   id: string
@@ -180,15 +181,25 @@ export function LinhaDoEstabelecimento({
               </Button>
             </>
           ) : r.status === "approved" ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => decidir("suspended")}
-              disabled={enviando}
-            >
-              <Pause className="size-4" aria-hidden="true" />
-              Suspender
-            </Button>
+            <>
+              {/* Abre o painel da loja como suporte. A entrada fica registrada
+                e a gestao da loja ve que o suporte esteve la. */}
+              <form action={entrarComoSuporte.bind(null, r.id)}>
+                <Button type="submit" size="sm" variant="outline" disabled={enviando}>
+                  <LifeBuoy className="size-4" aria-hidden="true" />
+                  Entrar como suporte
+                </Button>
+              </form>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => decidir("suspended")}
+                disabled={enviando}
+              >
+                <Pause className="size-4" aria-hidden="true" />
+                Suspender
+              </Button>
+            </>
           ) : (
             <Button size="sm" onClick={() => decidir("approved")} disabled={enviando}>
               <Play className="size-4" aria-hidden="true" />
