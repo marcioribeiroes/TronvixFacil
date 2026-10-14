@@ -76,8 +76,13 @@ class Vitrine {
                       'restaurant_platform_categories!inner(category_id)',
             );
 
-        if (busca != null && busca.trim().isNotEmpty) {
-          consulta = consulta.ilike('name', '%${busca.trim()}%');
+        // A busca é do banco (`buscar_na_vitrine`): loja, categoria ou prato,
+        // sem acento. Antes era só o nome, e "acai" não achava "Açaí Mania".
+        // Uma letra só ainda não é busca: a vitrine fica inteira.
+        if (busca != null && busca.trim().length >= 2) {
+          final achadas = await buscar(busca);
+          if (achadas.isEmpty) return <Restaurante>[];
+          consulta = consulta.inFilter('id', achadas.keys.toList());
         }
         if (categoriaId != null) {
           consulta = consulta.eq(
@@ -100,6 +105,19 @@ class Vitrine {
             .limit(limite);
 
         return linhas.map((l) => Restaurante.deMapa(l)).toList();
+      });
+
+  /// Lojas que batem com o termo, e os pratos que fizeram bater (até três).
+  static Future<Map<String, List<String>>> buscar(String termo) =>
+      executar(() async {
+        if (termo.trim().length < 2) return <String, List<String>>{};
+        final linhas = await banco
+            .rpc('buscar_na_vitrine', params: {'p_termo': termo.trim()});
+        return {
+          for (final l in (linhas as List).cast<Map<String, dynamic>>())
+            l['restaurant_id'] as String:
+                ((l['pratos'] as List?) ?? const []).cast<String>(),
+        };
       });
 
   static Future<List<CategoriaDaPlataforma>> categorias() => executar(() async {

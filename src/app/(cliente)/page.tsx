@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Clock, Star, Store, Tag } from "lucide-react"
+import { Clock, Search, Star, Store, Tag } from "lucide-react"
 import { enderecoAtual } from "@/modules/cliente/endereco-atual"
 
 import { AvisoDeConfiguracao } from "@/components/aviso-de-configuracao"
@@ -38,6 +38,7 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
   const categoriaEscolhida =
     typeof parametros.categoria === "string" ? parametros.categoria : null
   const somentePromocoes = parametros.promocoes === "1"
+  const termo = typeof parametros.q === "string" ? parametros.q.trim().slice(0, 60) : ""
 
   const supabase = await criarClienteDoServidor()
 
@@ -65,6 +66,15 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
 
   if (idsDaCategoria !== null) {
     consulta = consulta.in("id", idsDaCategoria)
+  }
+
+  // A busca: quem bate pelo nome, descricao, categoria ou por um prato. Os
+  // pratos que bateram aparecem no cartao — e o "por que esta loja?".
+  const pratosDaBusca = new Map<string, string[]>()
+  if (termo) {
+    const { data } = await supabase.rpc("buscar_na_vitrine", { p_termo: termo })
+    for (const b of data ?? []) pratosDaBusca.set(b.restaurant_id, b.pratos ?? [])
+    consulta = consulta.in("id", [...pratosDaBusca.keys()])
   }
   if (somentePromocoes) {
     consulta = consulta.eq("tem_promocao", true)
@@ -115,6 +125,24 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
 
   return (
     <div className="space-y-8 py-2">
+      {/* No celular a busca do topo nao cabe; ela mora aqui, no alto da vitrine. */}
+      <form action="/" role="search" className="md:hidden">
+        <label className="relative block">
+          <span className="sr-only">Buscar restaurantes e pratos</span>
+          <Search
+            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <input
+            type="search"
+            name="q"
+            defaultValue={termo}
+            placeholder="Buscar restaurantes, lanches, pizzas..."
+            className="h-10 w-full rounded-lg border bg-muted/50 pl-9 pr-3 text-sm outline-none focus-visible:border-ring focus-visible:bg-background"
+          />
+        </label>
+      </form>
+
       {/* Os filtros levavam a /categoria/<slug>, uma rota que nunca existiu:
           todo clique dava 404. Agora recortam a própria vitrine pela query
           string, que é uma tela a menos e um endereço que dá para mandar por
@@ -157,21 +185,27 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
 
       <section aria-labelledby="titulo-restaurantes">
         <h2 id="titulo-restaurantes" className="text-lg font-bold tracking-tight">
-          {somentePromocoes ? "Com promoção agora" : "Restaurantes"}
+          {termo
+            ? `Resultados para “${termo}”`
+            : somentePromocoes
+              ? "Com promoção agora"
+              : "Restaurantes"}
         </h2>
 
         {!restaurantes || restaurantes.length === 0 ? (
           <div className="mt-4 rounded-lg border border-dashed p-10 text-center">
             <Store className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
             <p className="mt-3 font-medium">
-              {somentePromocoes
+              {termo
+                ? "Nada encontrado"
+                : somentePromocoes
                 ? "Nenhuma promoção agora"
                 : categoriaEscolhida
                   ? "Nada nesta categoria"
                   : "Nenhum estabelecimento por aqui ainda"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {somentePromocoes || categoriaEscolhida ? (
+              {termo || somentePromocoes || categoriaEscolhida ? (
                 <Link href="/" className="font-semibold text-marca hover:underline">
                   Ver todos os restaurantes
                 </Link>
@@ -247,6 +281,12 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
                         })()}
                       </span>
                     </span>
+
+                    {pratosDaBusca.get(restaurante.id)?.length ? (
+                      <span className="mt-1 block truncate text-xs font-medium text-marca-forte">
+                        Tem: {pratosDaBusca.get(restaurante.id)!.join(", ")}
+                      </span>
+                    ) : null}
 
                     {restaurante.description ? (
                       <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">

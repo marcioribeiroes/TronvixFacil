@@ -59,7 +59,9 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
             </span>
           </Link>
 
-          <div className="hidden flex-1 md:block">
+          {/* Busca de verdade: o formulario manda ?q= para a vitrine, que
+              pergunta ao banco (loja, categoria ou prato, sem acento). */}
+          <form action="/" className="hidden flex-1 md:block" role="search">
             <label className="relative block">
               <span className="sr-only">Buscar restaurantes e pratos</span>
               <Search
@@ -68,11 +70,12 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
               />
               <input
                 type="search"
+                name="q"
                 placeholder="Buscar restaurantes, lanches, pizzas..."
                 className="h-9 w-full rounded-md border bg-muted/50 pl-9 pr-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:bg-background"
               />
             </label>
-          </div>
+          </form>
 
           <Button
             variant="ghost"
