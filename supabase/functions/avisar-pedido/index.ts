@@ -284,7 +284,16 @@ async function destinatarios(
   return { usuarios: [pedido.customer_id], aviso }
 }
 
+// A chave que o gatilho do banco manda (`app.configuracao.chave_de_servico`).
+// A funcao e publica na rede — sem esta conferencia, qualquer um que soubesse
+// o endereco mandava aviso falso para qualquer cliente, em nome da loja.
+const CHAVE_DO_BANCO = Deno.env.get("AVISO_CHAVE")
+
 Deno.serve(async (req) => {
+  if (!CHAVE_DO_BANCO || req.headers.get("Authorization") !== `Bearer ${CHAVE_DO_BANCO}`) {
+    return new Response("nao autorizado", { status: 401 })
+  }
+
   try {
     const corpo = await req.json()
     const pedido = corpo.record as Pedido | undefined
