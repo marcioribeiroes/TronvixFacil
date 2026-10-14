@@ -4,7 +4,10 @@ library;
 import 'package:flutter/material.dart';
 
 import '../comum/widgets.dart';
+import '../dados/enderecos.dart';
+import '../dados/entrega.dart';
 import '../dados/pedidos.dart';
+import '../dados/supabase.dart';
 import '../dados/vitrine.dart';
 import '../formato.dart';
 import '../modelos/modelos.dart';
@@ -29,6 +32,9 @@ class _TelaVitrineState extends State<TelaVitrine> {
 
   List<CategoriaDaPlataforma> _categorias = const [];
   List<Restaurante> _restaurantes = const [];
+
+  /// Com endereço salvo, quem entrega ali e por quanto — por loja.
+  Map<String, CotacaoDeEntrega> _cotacoes = const {};
   Pedido? _andando;
   String? _categoriaEscolhida;
 
@@ -68,10 +74,32 @@ class _TelaVitrineState extends State<TelaVitrine> {
         Pedidos.emAndamento(),
       ]);
 
+      // O endereço principal decide quem entrega. Sem conta ou sem endereço,
+      // a vitrine fica como sempre foi. Falhar aqui não derruba a vitrine.
+      var cotacoes = <String, CotacaoDeEntrega>{};
+      if (usuarioId != null) {
+        try {
+          final enderecos = await Enderecos.meus();
+          final principal =
+              enderecos.where((e) => e.padrao).firstOrNull ?? enderecos.firstOrNull;
+          if (principal != null) cotacoes = await TaxaDeEntrega.lojasPara(principal.id);
+        } catch (_) {}
+      }
+
+      // Quem não entrega fica no fim, marcado — dá para ver o cardápio e
+      // retirar. A ordem de antes vale dentro de cada grupo.
+      final lojas = [...(resultados[1] as List<Restaurante>)];
+      int fora(Restaurante r) => cotacoes[r.id]?.entrega == false ? 1 : 0;
+      final ordenadas = [
+        ...lojas.where((r) => fora(r) == 0),
+        ...lojas.where((r) => fora(r) == 1),
+      ];
+
       if (!mounted) return;
       setState(() {
         _categorias = resultados[0] as List<CategoriaDaPlataforma>;
-        _restaurantes = resultados[1] as List<Restaurante>;
+        _restaurantes = ordenadas;
+        _cotacoes = cotacoes;
         _andando = resultados[2] as Pedido?;
         _carregando = false;
       });
@@ -117,6 +145,7 @@ class _TelaVitrineState extends State<TelaVitrine> {
                     separatorBuilder: (_, _) => const Divider(indent: 16),
                     itemBuilder: (_, i) => _CartaoDeRestaurante(
                       restaurante: _restaurantes[i],
+                      cotacao: _cotacoes[_restaurantes[i].id],
                       aoTocar: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) =>
@@ -308,9 +337,16 @@ class _TelaVitrineState extends State<TelaVitrine> {
 }
 
 class _CartaoDeRestaurante extends StatelessWidget {
-  const _CartaoDeRestaurante({required this.restaurante, required this.aoTocar});
+  const _CartaoDeRestaurante({
+    required this.restaurante,
+    required this.aoTocar,
+    this.cotacao,
+  });
 
   final Restaurante restaurante;
+
+  /// Para o endereço principal do cliente, quando há um.
+  final CotacaoDeEntrega? cotacao;
   final VoidCallback aoTocar;
 
   @override
@@ -359,20 +395,34 @@ class _CartaoDeRestaurante extends StatelessWidget {
             Text(faixaDeMinutos(r.minutosDePreparo, r.minutosDeEntrega),
                 style: const TextStyle(fontSize: 13, color: Cores.textoSuave)),
             const _Ponto(),
-            Text(
-              r.taxaDeEntregaCentavos == 0
-                  ? 'Entrega grátis'
-                  : emReais(r.taxaDeEntregaCentavos),
-              style: TextStyle(
-                fontSize: 13,
-                color: r.taxaDeEntregaCentavos == 0
-                    ? Cores.sucesso
-                    : Cores.textoSuave,
-                fontWeight: r.taxaDeEntregaCentavos == 0
-                    ? FontWeight.w700
-                    : FontWeight.w400,
-              ),
-            ),
+            if (cotacao?.entrega == false)
+              const Flexible(
+                child: Text(
+                  'Não entrega no seu endereço',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Cores.perigo,
+                      fontWeight: FontWeight.w700),
+                ),
+              )
+            else
+              Builder(builder: (_) {
+                final taxa = cotacao?.taxaCentavos ?? r.taxaDeEntregaCentavos;
+                final km = cotacao?.distancia ?? '';
+                return Flexible(
+                  child: Text(
+                    '${km.isEmpty ? '' : '$km · '}'
+                    '${taxa == 0 ? 'Entrega grátis' : emReais(taxa)}',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: taxa == 0 ? Cores.sucesso : Cores.textoSuave,
+                      fontWeight: taxa == 0 ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                );
+              }),
           ],
         ),
       ),

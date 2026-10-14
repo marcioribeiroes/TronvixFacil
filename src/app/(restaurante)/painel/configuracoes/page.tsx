@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { ConfiguracoesDaLoja } from "@/components/painel/configuracoes-da-loja"
+import { FaixasDeEntrega } from "@/components/painel/faixas-de-entrega"
 import { FotosDaLoja } from "@/components/painel/fotos-da-loja"
 import { PixDaLoja } from "@/components/painel/pix-da-loja"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
@@ -12,11 +13,11 @@ export default async function PaginaDeConfiguracoes() {
   const { vinculo } = await exigirGestao()
   const supabase = await criarClienteDoServidor()
 
-  const [{ data: loja }, { data: horarios }, { data: formas }] = await Promise.all([
+  const [{ data: loja }, { data: horarios }, { data: formas }, { data: faixas }] = await Promise.all([
     supabase
       .from("restaurants")
       .select(
-        "id, name, description, phone, city, logo_url, cover_url, pix_key, pix_key_type, pix_recipient_name, pix_city, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes, delivery_radius_km, accepts_scheduled_orders",
+        "id, name, description, phone, city, logo_url, cover_url, pix_key, pix_key_type, pix_recipient_name, pix_city, delivery_fee_cents, free_delivery_above_cents, min_order_cents, avg_prep_minutes, avg_delivery_minutes, delivery_radius_km, accepts_scheduled_orders, latitude",
       )
       .eq("id", vinculo.restauranteId)
       .single(),
@@ -30,6 +31,11 @@ export default async function PaginaDeConfiguracoes() {
       .from("restaurant_payment_methods")
       .select("method, timing, is_active")
       .eq("restaurant_id", vinculo.restauranteId),
+    supabase
+      .from("delivery_fee_tiers")
+      .select("up_to_km, fee_cents")
+      .eq("restaurant_id", vinculo.restauranteId)
+      .order("up_to_km"),
   ])
 
   if (!loja) return null
@@ -65,6 +71,11 @@ export default async function PaginaDeConfiguracoes() {
         loja={loja}
         horarios={horarios ?? []}
         formas={formas ?? []}
+      />
+
+      <FaixasDeEntrega
+        faixas={(faixas ?? []).map((f) => ({ up_to_km: Number(f.up_to_km), fee_cents: f.fee_cents }))}
+        lojaTemLocalizacao={loja.latitude !== null}
       />
     </div>
   )

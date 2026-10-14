@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 34   Enums: 15   Funcoes: 24
+// Tabelas: 35   Enums: 15   Funcoes: 27
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -753,6 +753,38 @@ export interface Database {
           },
           {
             foreignKeyName: "deliveries_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      delivery_fee_tiers: {
+        Row: {
+          id: string
+          restaurant_id: string
+          up_to_km: number
+          fee_cents: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          up_to_km: number
+          fee_cents: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          up_to_km?: number
+          fee_cents?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_fee_tiers_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
@@ -2027,6 +2059,14 @@ export interface Database {
         }
         Returns: undefined
       }
+      cotar_entrega: {
+        Args: {
+          p_restaurante: string
+          p_endereco: string
+          p_subtotal_cents?: number
+        }
+        Returns: Json
+      }
       criar_mesas: {
         Args: {
           p_restaurante: string
@@ -2069,6 +2109,12 @@ export interface Database {
           p_dados: Json
         }
         Returns: string
+      }
+      lojas_para_o_endereco: {
+        Args: {
+          p_endereco: string
+        }
+        Returns: { restaurant_id: string; entrega: boolean; km: number; taxa_cents: number }[]
       }
       movimento_do_caixa: {
         Args: {
@@ -2122,6 +2168,13 @@ export interface Database {
       sair_do_suporte: {
         Args: {
           [chave: string]: never
+        }
+        Returns: undefined
+      }
+      salvar_faixas_de_entrega: {
+        Args: {
+          p_restaurante: string
+          p_faixas: Json
         }
         Returns: undefined
       }

@@ -8,6 +8,7 @@ import { sair } from "@/modules/auth/acoes"
 import { obterContexto, rotaInicialDe } from "@/modules/auth/sessao"
 import { FaixaDaMesa } from "@/components/cliente/faixa-da-mesa"
 import { mesaAtual } from "@/modules/cliente/mesa"
+import { enderecoAtual } from "@/modules/cliente/endereco-atual"
 
 /**
  * Moldura do aplicativo do cliente.
@@ -17,7 +18,11 @@ import { mesaAtual } from "@/modules/cliente/mesa"
  * desktop a barra some e a navegacao sobe para o cabecalho.
  */
 export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
-  const [contexto, mesa] = await Promise.all([obterContexto(), mesaAtual()])
+  const [contexto, mesa, endereco] = await Promise.all([
+    obterContexto(),
+    mesaAtual(),
+    enderecoAtual(),
+  ])
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -37,8 +42,10 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
             </span>
           </Link>
 
-          <button
-            type="button"
+          {/* O endereco que vale agora. Sem conta, leva ao login; com conta,
+              aos enderecos — e trocar o principal muda a vitrine. */}
+          <Link
+            href={contexto ? "/conta/enderecos" : "/entrar?voltar_para=%2Fconta%2Fenderecos"}
             className="ml-auto flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted md:ml-4"
           >
             <MapPin className="size-4 shrink-0 text-marca" aria-hidden="true" />
@@ -46,11 +53,11 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
               <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">
                 Entregar em
               </span>
-              <span className="block truncate font-medium">
-                {contexto ? "Escolher endereço" : "Informe seu endereço"}
+              <span className="block max-w-48 truncate font-medium">
+                {endereco ? endereco.resumo : contexto ? "Escolher endereço" : "Informe seu endereço"}
               </span>
             </span>
-          </button>
+          </Link>
 
           <div className="hidden flex-1 md:block">
             <label className="relative block">

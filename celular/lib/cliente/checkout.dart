@@ -15,6 +15,7 @@ import '../dados/cardapio.dart';
 import '../dados/carrinho.dart';
 import '../dados/mesa.dart';
 import '../dados/enderecos.dart';
+import '../dados/entrega.dart';
 import '../dados/pedidos.dart';
 import '../formato.dart';
 import '../modelos/modelos.dart';
@@ -37,6 +38,9 @@ class _TelaCheckoutState extends State<TelaCheckout> {
   List<Endereco> _enderecos = const [];
   List<FormaAceita> _formasAceitas = const [];
   Endereco? _endereco;
+
+  /// A cotação da loja para cada endereço: se entrega e por quanto.
+  Map<String, CotacaoDeEntrega> _cotacoes = const {};
   /// A mesa lida no QR, se for desta loja. Quem escaneou já começa nela:
   /// perguntar "onde você quer receber?" a quem acabou de escanear a mesa é
   /// perguntar o que a pessoa já respondeu.
@@ -84,9 +88,22 @@ class _TelaCheckoutState extends State<TelaCheckout> {
       final enderecos = resultados[0] as List<Endereco>;
       final formas = resultados[1] as List<FormaAceita>;
 
+      // Sem a cotação, a tela cai na taxa única da loja; o fechamento
+      // confere de qualquer jeito.
+      final cotacoes = await TaxaDeEntrega.paraEnderecos(
+              restaurante.id, [for (final e in enderecos) e.id])
+          .catchError((_) => <String, CotacaoDeEntrega>{});
+      if (!mounted) return;
+
+      bool atende(Endereco e) => cotacoes[e.id]?.entrega ?? true;
+
       setState(() {
         _enderecos = enderecos;
-        _endereco = enderecos.where((e) => e.padrao).firstOrNull ??
+        _cotacoes = cotacoes;
+        // O padrão, se a loja atende; senão, o primeiro que ela atende. Não
+        // adianta abrir marcado num endereço fora da área.
+        _endereco = enderecos.where((e) => e.padrao && atende(e)).firstOrNull ??
+            enderecos.where(atende).firstOrNull ??
             enderecos.firstOrNull;
         // Sem forma cadastrada, o estabelecimento ainda não configurou nada;
         // dinheiro na entrega é o padrão que nunca depende de integração.
@@ -120,9 +137,20 @@ class _TelaCheckoutState extends State<TelaCheckout> {
 
   int get _subtotal => Carrinho.instancia.subtotalCentavos;
 
-  int get _taxa => !_tipo.vaiParaRua
-      ? 0
-      : (Carrinho.instancia.restaurante?.taxaPara(_subtotal) ?? 0);
+  CotacaoDeEntrega? get _cotacao =>
+      _endereco == null ? null : _cotacoes[_endereco!.id];
+
+  bool get _foraDaArea =>
+      _tipo == TipoDeEntrega.entrega && _cotacao?.entrega == false;
+
+  int get _taxa {
+    if (!_tipo.vaiParaRua) return 0;
+    final loja = Carrinho.instancia.restaurante;
+    if (loja == null) return 0;
+    final gratis = loja.entregaGratisAcimaDeCentavos;
+    if (gratis != null && _subtotal >= gratis) return 0;
+    return _cotacao?.taxaCentavos ?? loja.taxaPara(_subtotal);
+  }
 
   int get _total => _subtotal + _taxa - _descontoCentavos;
 
@@ -276,8 +304,22 @@ class _TelaCheckoutState extends State<TelaCheckout> {
                         title: Text(e.rotulo,
                             style:
                                 const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle:
-                            Text(e.resumo, style: const TextStyle(fontSize: 13)),
+                        subtitle: Text(
+                          [
+                            e.resumo,
+                            if (_cotacoes[e.id]?.entrega == false)
+                              'Fora da área de entrega${_cotacoes[e.id]!.km == null ? '' : ' (${_cotacoes[e.id]!.distancia})'}'
+                            else if (_cotacoes[e.id] != null)
+                              '${_cotacoes[e.id]!.distancia.isEmpty ? '' : '${_cotacoes[e.id]!.distancia} · '}'
+                                  'entrega ${_cotacoes[e.id]!.taxaCentavos == 0 ? 'grátis' : emReais(_cotacoes[e.id]!.taxaCentavos ?? 0)}',
+                          ].join('\n'),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _cotacoes[e.id]?.entrega == false
+                                ? Cores.perigo
+                                : null,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -385,10 +427,12 @@ class _TelaCheckoutState extends State<TelaCheckout> {
       ),
       bottomNavigationBar: BarraDeAcao(
         filho: FilledButton(
-          onPressed: _fechando ? null : _fechar,
+          onPressed: _fechando || _foraDaArea ? null : _fechar,
           child: Text(_fechando
               ? 'Enviando…'
-              : 'Fazer pedido · ${emReais(_total)}'),
+              : _foraDaArea
+                  ? 'A loja não entrega neste endereço'
+                  : 'Fazer pedido · ${emReais(_total)}'),
         ),
       ),
     );
@@ -404,11 +448,20 @@ class _TelaCheckoutState extends State<TelaCheckout> {
     final criado = await Navigator.of(context).push<Endereco>(
       MaterialPageRoute(builder: (_) => const TelaEnderecoFormulario()),
     );
-    if (criado != null) {
-      setState(() {
-        _enderecos = [..._enderecos, criado];
-        _endereco = criado;
-      });
+    if (criado == null) return;
+    setState(() {
+      _enderecos = [..._enderecos, criado];
+      _endereco = criado;
+    });
+
+    // O endereço novo também precisa da cotação: pode estar fora da área.
+    final restaurante = Carrinho.instancia.restaurante;
+    if (restaurante == null) return;
+    try {
+      final cotacao = await TaxaDeEntrega.paraEnderecos(restaurante.id, [criado.id]);
+      if (mounted) setState(() => _cotacoes = {..._cotacoes, ...cotacao});
+    } catch (_) {
+      // Sem cotação, vale a taxa única; o fechamento confere.
     }
   }
 }

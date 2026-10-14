@@ -70,7 +70,19 @@ export function FecharPedido({
     minimoCentavos: number
   }
   itens: Item[]
-  enderecos: { id: string; rotulo: string; resumo: string }[]
+  /**
+   * Cada endereco com a cotacao da loja para ele (`cotar_entrega`): se
+   * entrega, a quantos km e a taxa da faixa. O frete gratis por valor e
+   * aplicado aqui, sobre o subtotal da tela.
+   */
+  enderecos: {
+    id: string
+    rotulo: string
+    resumo: string
+    entrega: boolean
+    km: number | null
+    taxaCentavos: number | null
+  }[]
   /**
    * Cada forma COM o momento em que se paga. O par importa: o mesmo cartão de
    * crédito pode ser aceito pelo site e na maquininha, e são duas linhas
@@ -87,7 +99,13 @@ export function FecharPedido({
   // Quem leu o QR da mesa ja comeca nela. Obrigar a escolher "mesa" depois de
   // escanear a mesa seria perguntar o que a pessoa acabou de responder.
   const [tipo, setTipo] = useState<Enums<"fulfillment_type">>(mesa ? "dine_in" : "delivery")
-  const [enderecoId, setEnderecoId] = useState(enderecos[0]?.id ?? "")
+  // Comeca no primeiro endereco que a loja atende — nao adianta marcar o
+  // padrao se ele fica fora da area.
+  const [enderecoId, setEnderecoId] = useState(
+    (enderecos.find((e) => e.entrega) ?? enderecos[0])?.id ?? "",
+  )
+  const endereco = enderecos.find((e) => e.id === enderecoId)
+  const foraDaArea = tipo === "delivery" && endereco !== undefined && !endereco.entrega
   const [observacao, setObservacao] = useState("")
   const [cupom, setCupom] = useState("")
   const [cupomAplicado, setCupomAplicado] = useState<string | null>(null)
@@ -118,7 +136,7 @@ export function FecharPedido({
       ? 0
       : loja.freteGratisAcima !== null && subtotal >= loja.freteGratisAcima
         ? 0
-        : loja.taxaCentavos
+        : (endereco?.taxaCentavos ?? loja.taxaCentavos)
 
   const total = subtotal + taxa - desconto
   const falta = Math.max(0, loja.minimoCentavos - subtotal)
@@ -249,14 +267,17 @@ export function FecharPedido({
           {enderecos.length === 0 ? (
             <p className="mt-2 text-sm text-muted-foreground">
               Você ainda não tem endereço salvo.{" "}
-              <Link href="/conta/enderecos" className="font-semibold text-marca hover:underline">
+              <Link
+                href="/conta/enderecos?voltar_para=%2Fcarrinho"
+                className="font-semibold text-marca hover:underline"
+              >
                 Cadastrar
               </Link>
             </p>
           ) : (
             <ul className="mt-2 divide-y rounded-xl border bg-card">
               {enderecos.map((e) => (
-                <li key={e.id}>
+                <li key={e.id} className={e.entrega ? "" : "opacity-60"}>
                   <label className="flex cursor-pointer items-center gap-3 p-3">
                     <input
                       type="radio"
@@ -268,12 +289,29 @@ export function FecharPedido({
                     <span>
                       <span className="font-semibold">{e.rotulo}</span>
                       <span className="block text-sm text-muted-foreground">{e.resumo}</span>
+                      <span
+                        className={`block text-xs font-semibold ${e.entrega ? "text-muted-foreground" : "text-destructive"}`}
+                      >
+                        {e.entrega
+                          ? `${e.km !== null ? `${e.km.toLocaleString("pt-BR")} km · ` : ""}entrega ${
+                              e.taxaCentavos === 0 ? "grátis" : formatarReais(e.taxaCentavos ?? 0)
+                            }`
+                          : `Fora da área de entrega${e.km !== null ? ` (${e.km.toLocaleString("pt-BR")} km)` : ""}`}
+                      </span>
                     </span>
                   </label>
                 </li>
               ))}
             </ul>
           )}
+          {enderecos.length > 0 ? (
+            <Link
+              href="/conta/enderecos?voltar_para=%2Fcarrinho"
+              className="mt-2 inline-block text-sm font-semibold text-marca hover:underline"
+            >
+              Outro endereço
+            </Link>
+          ) : null}
         </section>
       ) : null}
 
@@ -388,6 +426,12 @@ export function FecharPedido({
         </div>
       </dl>
 
+      {foraDaArea ? (
+        <p className="rounded-lg bg-marca-suave px-4 py-3 text-sm text-marca-forte">
+          {loja.nome} não entrega neste endereço. Escolha outro endereço ou retire no balcão.
+        </p>
+      ) : null}
+
       {falta > 0 ? (
         <p className="rounded-lg bg-marca-suave px-4 py-3 text-sm text-marca-forte">
           Faltam {formatarReais(falta)} para o pedido mínimo deste estabelecimento.
@@ -404,10 +448,12 @@ export function FecharPedido({
         <Button
           className="flex-1"
           onClick={fechar}
-          disabled={enviando || falta > 0 || !loja.aberta}
+          disabled={enviando || falta > 0 || !loja.aberta || foraDaArea}
         >
           {!loja.aberta
             ? "Restaurante fechado"
+            : foraDaArea
+              ? "A loja não entrega neste endereço"
             : enviando
               ? "Enviando…"
               : `Fazer pedido · ${formatarReais(total)}`}

@@ -2,15 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Heart, Home, Receipt, User } from "lucide-react"
+import { Home, MapPin, Receipt, User } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+// Favoritos saiu: nao existe no site, e o botao levava a uma pagina vazia.
+// Enderecos entrou no lugar — e o que decide quem entrega e por quanto.
 const ITENS = [
   { rotulo: "Início", href: "/", icone: Home },
-  { rotulo: "Pedidos", href: "/conta/pedidos", icone: Receipt },
-  { rotulo: "Favoritos", href: "/conta/favoritos", icone: Heart },
-  { rotulo: "Perfil", href: "/conta", icone: User },
+  { rotulo: "Pedidos", href: "/pedidos", icone: Receipt },
+  { rotulo: "Endereços", href: "/conta/enderecos", icone: MapPin },
+  { rotulo: "Conta", href: "/conta", icone: User },
 ]
 
 /**
@@ -29,7 +31,12 @@ export function BarraInferior() {
     >
       <ul className="mx-auto flex max-w-lg items-stretch">
         {ITENS.map((item) => {
-          const ativo = item.href === "/" ? caminho === "/" : caminho.startsWith(item.href)
+          // "/" e "/conta" por igualdade: senao a Conta acenderia junto com
+          // Enderecos, que mora dentro dela.
+          const ativo =
+            item.href === "/" || item.href === "/conta"
+              ? caminho === item.href
+              : caminho.startsWith(item.href)
           const Icone = item.icone
 
           return (

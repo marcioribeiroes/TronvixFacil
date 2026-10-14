@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Clock, Star, Store, Tag } from "lucide-react"
+import { enderecoAtual } from "@/modules/cliente/endereco-atual"
 
 import { AvisoDeConfiguracao } from "@/components/aviso-de-configuracao"
 import { Badge } from "@/components/ui/badge"
@@ -69,7 +70,22 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
     consulta = consulta.eq("tem_promocao", true)
   }
 
-  const [{ data: categorias }, { data: restaurantes }] = await Promise.all([
+  // Com endereco, a vitrine sabe quem entrega ali e por quanto. A cotacao e a
+  // do banco — a mesma que o carrinho e o fechamento usam.
+  const endereco = await enderecoAtual()
+  const cotacoes = new Map<string, { entrega: boolean; km: number | null; taxa: number | null }>()
+  if (endereco) {
+    const { data } = await supabase.rpc("lojas_para_o_endereco", { p_endereco: endereco.id })
+    for (const c of data ?? []) {
+      cotacoes.set(c.restaurant_id, {
+        entrega: c.entrega,
+        km: c.km === null ? null : Number(c.km),
+        taxa: c.taxa_cents,
+      })
+    }
+  }
+
+  const [{ data: categorias }, { data: lidos }] = await Promise.all([
     supabase
       .from("platform_categories")
       .select("id, slug, name")
@@ -86,6 +102,16 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
       .order("name", { ascending: true })
       .limit(20),
   ])
+
+  // Quem nao entrega no endereco continua na vitrine (da para ver o cardapio e
+  // retirar), mas no fim, e marcado. A ordem de antes vale dentro de cada grupo.
+  const restaurantes = lidos
+    ? [...lidos].sort(
+        (a, b) =>
+          Number(cotacoes.get(a.id)?.entrega === false) -
+          Number(cotacoes.get(b.id)?.entrega === false),
+      )
+    : lidos
 
   return (
     <div className="space-y-8 py-2">
@@ -206,9 +232,19 @@ export default async function PaginaInicial({ searchParams }: PageProps<"/">) {
                       </span>
                       <span aria-hidden="true">•</span>
                       <span>
-                        {restaurante.delivery_fee_cents === 0
-                          ? "Entrega grátis"
-                          : formatarReais(restaurante.delivery_fee_cents)}
+                        {(() => {
+                          const c = cotacoes.get(restaurante.id)
+                          if (c && !c.entrega) {
+                            return (
+                              <span className="font-semibold text-destructive">
+                                Não entrega no seu endereço
+                              </span>
+                            )
+                          }
+                          const taxa = c?.taxa ?? restaurante.delivery_fee_cents
+                          const km = c?.km != null ? `${c.km.toLocaleString("pt-BR")} km · ` : ""
+                          return `${km}${taxa === 0 ? "Entrega grátis" : formatarReais(taxa)}`
+                        })()}
                       </span>
                     </span>
 

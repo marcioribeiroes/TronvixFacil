@@ -313,3 +313,40 @@ function conferirChavePix(chave: string, tipo: string): string | null {
       return "Tipo de chave desconhecido."
   }
 }
+
+/**
+ * As faixas de taxa por distancia.
+ *
+ * Vem como texto, do jeito que o dono digita ("2", "2,5"; "4", "R$ 4,00"), e
+ * vira km e centavos aqui. A lista inteira e trocada de uma vez no banco
+ * (`salvar_faixas_de_entrega`), que confere permissao e limites. Lista vazia
+ * volta a taxa unica.
+ */
+export async function salvarFaixasDeEntrega(
+  faixas: { ateKm: string; taxa: string }[],
+): Promise<ResultadoDaAcao> {
+  const { vinculo } = await exigirGestao()
+
+  const convertidas = []
+  for (const f of faixas) {
+    const km = Number(f.ateKm.replace(",", ".").trim())
+    const centavos = paraCentavos(f.taxa)
+    if (!Number.isFinite(km) || km <= 0 || km > 50) {
+      return { ok: false, erro: "A distância de cada faixa vai de 0 a 50 km." }
+    }
+    if (centavos === null || centavos < 0) {
+      return { ok: false, erro: "Informe a taxa de cada faixa (pode ser R$ 0,00)." }
+    }
+    convertidas.push({ ate_km: Math.round(km * 100) / 100, taxa_cents: centavos })
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("salvar_faixas_de_entrega", {
+    p_restaurante: vinculo.restauranteId,
+    p_faixas: convertidas,
+  })
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/configuracoes")
+  return { ok: true }
+}
