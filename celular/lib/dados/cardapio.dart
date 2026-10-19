@@ -131,7 +131,11 @@ class Cardapio {
                   FormaDePagamento.de(l['method'] as String),
                   MomentoDoPagamento.de(l['timing'] as String),
                 ))
-            .where((f) => f.forma != FormaDePagamento.pix || temChavePix)
+            // Pelo aplicativo, só o Pix com a chave da loja: cartão pelo
+            // app não tem operadora, e o banco recusa. Ao receber, tudo
+            // vale — inclusive o Pix na maquininha, que não precisa de chave.
+            .where((f) => f.momento == MomentoDoPagamento.naEntrega ||
+                (f.forma == FormaDePagamento.pix && temChavePix))
             .toList();
       });
 }
@@ -150,8 +154,9 @@ class FormaAceita {
   final MomentoDoPagamento momento;
 
   /// Como a linha se descreve embaixo do nome, na tela de pagamento.
-  String get quando =>
-      momento == MomentoDoPagamento.noApp ? 'Pelo aplicativo' : 'Na entrega';
+  String get quando => momento == MomentoDoPagamento.noApp
+      ? 'Pelo aplicativo, agora'
+      : 'Ao receber, direto à loja';
 
   @override
   bool operator ==(Object other) =>

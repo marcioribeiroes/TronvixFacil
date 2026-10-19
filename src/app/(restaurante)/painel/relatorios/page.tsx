@@ -85,12 +85,52 @@ export default async function RelatoriosDoRestaurante() {
     maisVendidos.set(i.product_name, atual)
   }
 
+  // A comissao fechada por mes. O cliente paga direto a loja, entao a
+  // plataforma cobra depois — e a loja ve aqui quanto e de onde vem.
+  const { data: comissoes } = await supabase
+    .from("commission_statements")
+    .select("id, month, orders_count, sales_cents, commission_cents, status, paid_at")
+    .eq("restaurant_id", vinculo.restauranteId)
+    .order("month", { ascending: false })
+    .limit(6)
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
         <p className="mt-1 text-sm text-muted-foreground">Últimos 30 dias.</p>
       </div>
+
+      {comissoes && comissoes.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="text-sm font-bold uppercase tracking-wide">Comissão da plataforma</h2>
+          <p className="text-sm text-muted-foreground">
+            Você recebe direto do cliente; a comissão dos pedidos entregues no mês é cobrada
+            depois. Pedido lançado no balcão não paga comissão.
+          </p>
+          <ul className="divide-y rounded-xl border bg-card text-sm">
+            {comissoes.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
+                <span className="w-32 font-semibold capitalize">
+                  {new Date(`${c.month}T12:00:00`).toLocaleDateString("pt-BR", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+                <span className="flex-1 text-muted-foreground">
+                  {c.orders_count} pedidos · {formatarReais(c.sales_cents)} vendidos
+                </span>
+                <span className="font-bold">{formatarReais(c.commission_cents)}</span>
+                <span
+                  className={`text-xs font-semibold ${c.status === "paid" ? "text-status-pronto" : "text-marca-forte"}`}
+                >
+                  {c.status === "paid" ? "pago" : "a pagar"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4">

@@ -75,8 +75,10 @@ export default async function PaginaDoCarrinho() {
   // formas diz o que o balcao marcou; `aceita_pix` diz o que ele consegue
   // receber. Sem a chave, `fechar_pedido` recusa — e o ultimo toque, depois de
   // escolher o que comer e como pagar, e o pior lugar para dar essa noticia.
-  const aceitas = (formas ?? []).filter(
-    (f) => f.method !== "pix" || loja.aceita_pix === true,
+  // Pelo app, so o Pix com a chave da loja: cartao pelo app nao tem
+  // operadora, e o banco recusa. Pix ao receber nao precisa de chave nenhuma.
+  const aceitas = (formas ?? []).filter((f) =>
+    f.timing === "online" ? f.method === "pix" && loja.aceita_pix === true : true,
   )
 
   return (

@@ -317,6 +317,13 @@ export function FecharPedido({
 
       <section>
         <h2 className="font-bold">Como pagar</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {tipo === "dine_in"
+            ? "Você paga na mesa: dinheiro, cartão ou Pix na maquininha."
+            : tipo === "pickup"
+              ? "Você paga ao retirar: dinheiro, cartão ou Pix na maquininha."
+              : "Você paga ao receber: dinheiro, cartão ou Pix na maquininha."}
+        </p>
         <ul className="mt-2 divide-y rounded-xl border bg-card">
           {formas.map((f) => (
             <li key={`${f.metodo}-${f.momento}`}>
@@ -334,7 +341,7 @@ export function FecharPedido({
                     "pelo site", e as duas linhas eram indistinguíveis. */}
                 <span className="text-sm text-muted-foreground">
                   {f.momento === "online"
-                    ? "pelo site"
+                    ? "pelo app, agora"
                     : tipo === "dine_in"
                       ? "na mesa"
                       : tipo === "pickup"

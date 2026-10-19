@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 
+import { FechamentoDeComissoes } from "@/components/admin/fechamento-de-comissoes"
 import { Badge } from "@/components/ui/badge"
 import { formatarReais } from "@/lib/dinheiro"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
@@ -19,9 +20,28 @@ export const metadata: Metadata = { title: "Financeiro" }
  * Cancelados e recusados ficam de fora: pedido que nao aconteceu nao gera
  * repasse nem comissao.
  */
-export default async function PaginaFinanceira() {
+export default async function PaginaFinanceira({
+  searchParams,
+}: PageProps<"/admin/financeiro">) {
   await exigirAdminDaPlataforma()
   const supabase = await criarClienteDoServidor()
+
+  // O mes do fechamento: o pedido na URL, ou o mes passado — e o que se cobra
+  // no comeco de cada mes.
+  const parametros = await searchParams
+  const passado = new Date()
+  passado.setDate(1)
+  passado.setMonth(passado.getMonth() - 1)
+  const mes =
+    typeof parametros.mes === "string" && /^\d{4}-\d{2}$/.test(parametros.mes)
+      ? parametros.mes
+      : passado.toISOString().slice(0, 7)
+
+  const { data: extratos } = await supabase
+    .from("commission_statements")
+    .select("id, orders_count, sales_cents, commission_cents, status, paid_at, paid_note, restaurants(name)")
+    .eq("month", `${mes}-01`)
+    .order("commission_cents", { ascending: false })
 
   const trintaDias = new Date()
   trintaDias.setDate(trintaDias.getDate() - 30)
@@ -80,6 +100,20 @@ export default async function PaginaFinanceira() {
           agora.
         </p>
       </div>
+
+      <FechamentoDeComissoes
+        mes={mes}
+        extratos={(extratos ?? []).map((e) => ({
+          id: e.id,
+          loja: e.restaurants?.name ?? "",
+          pedidos: e.orders_count,
+          vendas: e.sales_cents,
+          comissao: e.commission_cents,
+          pago: e.status === "paid",
+          pagoEm: e.paid_at,
+          observacao: e.paid_note,
+        }))}
+      />
 
       <dl className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border bg-card p-4">

@@ -335,6 +335,17 @@ class _TelaCheckoutState extends State<TelaCheckout> {
             ],
           ],
           _titulo('Como pagar'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Text(
+              _tipo == TipoDeEntrega.mesa
+                  ? 'Você paga na mesa: dinheiro, cartão ou Pix na maquininha.'
+                  : _tipo == TipoDeEntrega.retirada
+                      ? 'Você paga ao retirar: dinheiro, cartão ou Pix na maquininha.'
+                      : 'Você paga ao receber: dinheiro, cartão ou Pix na maquininha.',
+              style: const TextStyle(fontSize: 13, color: Cores.textoSuave),
+            ),
+          ),
           RadioGroup<FormaAceita>(
             groupValue: _forma,
             onChanged: (v) => setState(() => _forma = v),

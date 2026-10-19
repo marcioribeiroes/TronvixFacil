@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 35   Enums: 15   Funcoes: 28
+// Tabelas: 37   Enums: 15   Funcoes: 32
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -479,6 +479,56 @@ export interface Database {
           }
         ]
       }
+      commission_statements: {
+        Row: {
+          id: string
+          restaurant_id: string
+          month: string
+          orders_count: number
+          sales_cents: number
+          commission_cents: number
+          status: string
+          paid_at: string | null
+          paid_note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          month: string
+          orders_count?: number
+          sales_cents?: number
+          commission_cents?: number
+          status?: string
+          paid_at?: string | null
+          paid_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          month?: string
+          orders_count?: number
+          sales_cents?: number
+          commission_cents?: number
+          status?: string
+          paid_at?: string | null
+          paid_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_statements_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       coupon_redemptions: {
         Row: {
           id: string
@@ -788,6 +838,41 @@ export interface Database {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      device_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          token: string
+          platform: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token: string
+          platform: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          token?: string
+          platform?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           }
         ]
@@ -2094,6 +2179,12 @@ export interface Database {
         }
         Returns: string
       }
+      esquecer_aparelho: {
+        Args: {
+          p_token: string
+        }
+        Returns: undefined
+      }
       fechar_pedido: {
         Args: {
           p_cart_id: string
@@ -2109,6 +2200,12 @@ export interface Database {
         }
         Returns: string
       }
+      gerar_fechamento_de_comissoes: {
+        Args: {
+          p_mes: string
+        }
+        Returns: number
+      }
       lancar_pedido: {
         Args: {
           p_restaurante: string
@@ -2121,6 +2218,13 @@ export interface Database {
           p_endereco: string
         }
         Returns: { restaurant_id: string; entrega: boolean; km: number; taxa_cents: number }[]
+      }
+      marcar_comissao_paga: {
+        Args: {
+          p_extrato: string
+          p_observacao?: string
+        }
+        Returns: undefined
       }
       movimento_do_caixa: {
         Args: {
@@ -2153,6 +2257,13 @@ export interface Database {
         Args: {
           p_pedido: string
           p_forma: Database["public"]["Enums"]["payment_method"]
+        }
+        Returns: undefined
+      }
+      registrar_aparelho: {
+        Args: {
+          p_token: string
+          p_plataforma: string
         }
         Returns: undefined
       }

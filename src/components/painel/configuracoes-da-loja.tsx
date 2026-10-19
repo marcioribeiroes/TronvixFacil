@@ -20,17 +20,19 @@ const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sáb
 /**
  * As formas que o produto oferece hoje.
  *
- * Pix e crédito aparecem como "pelo site" porque exigem gateway; enquanto o
- * provedor for simulado, um pedido assim nasce em "aguardando pagamento" e
- * nunca chega ao balcão. Ligá-las é possível — e o aviso na tela diz o que
- * acontece.
+ * Tudo se paga ao receber — na entrega, no balcão ou na mesa —, direto para a
+ * loja. A exceção é o Pix pelo app: o código é o da chave da própria loja, e
+ * quem confirma é o balcão, olhando o extrato. Cartão pelo app não existe:
+ * sem operadora integrada, o pedido nunca seria cobrado (e o banco recusa).
  */
 const FORMAS: { metodo: Enums<"payment_method">; rotulo: string; momento: Enums<"payment_timing"> }[] = [
   { metodo: "cash", rotulo: "Dinheiro", momento: "on_delivery" },
   { metodo: "debit_card", rotulo: "Cartão de débito", momento: "on_delivery" },
   { metodo: "credit_card", rotulo: "Cartão de crédito", momento: "on_delivery" },
   { metodo: "meal_voucher", rotulo: "Vale-refeição", momento: "on_delivery" },
-  { metodo: "pix", rotulo: "Pix", momento: "online" },
+  // O Pix no QR da maquininha ou da loja, na porta ou na mesa.
+  { metodo: "pix", rotulo: "Pix", momento: "on_delivery" },
+  { metodo: "pix", rotulo: "Pix pelo app (com a chave da loja)", momento: "online" },
 ]
 
 export function ConfiguracoesDaLoja({
@@ -280,9 +282,10 @@ export function ConfiguracoesDaLoja({
       <section className="rounded-xl border bg-card p-5">
         <h2 className="font-bold">Formas de pagamento</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          O que o cliente vê no checkout. Pix e crédito pelo site dependem de
-          provedor de pagamento — enquanto ele for simulado, o pedido nasce em
-          &ldquo;aguardando pagamento&rdquo; e não chega à sua fila.
+          O que o cliente vê no checkout. Ele paga ao receber, direto para a loja: na
+          entrega, no balcão ou na mesa. No Pix pelo app, o cliente paga antes com o
+          código da sua chave Pix, e o pedido só entra na fila quando você confirmar o
+          recebimento.
         </p>
 
         <ul className="mt-4 divide-y">
@@ -290,7 +293,7 @@ export function ConfiguracoesDaLoja({
             <li key={`${f.metodo}-${f.momento}`} className="flex items-center gap-3 py-2.5">
               <span className="flex-1 text-sm font-medium">{f.rotulo}</span>
               <span className="text-xs text-muted-foreground">
-                {f.momento === "online" ? "pelo site" : "na entrega"}
+                {f.momento === "online" ? "pelo app, antes" : "ao receber"}
               </span>
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input
