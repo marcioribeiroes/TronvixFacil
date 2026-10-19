@@ -1,21 +1,24 @@
 O Tronvix Fácil junta as duas formas de pedir comida num aplicativo só: o delivery que chega até você e o pedido feito na mesa do restaurante, pelo seu próprio celular.
 
 PEÇA DE ONDE VOCÊ ESTIVER
-Escolha o restaurante, monte o pedido e acompanhe até a porta. Você vê o tempo estimado, a taxa de entrega e o total antes de confirmar — sem surpresa no fim.
+Escolha o restaurante, monte o pedido e acompanhe até a porta. Antes de confirmar você já vê a distância, a taxa de entrega da sua região e o total — sem surpresa no fim. Se a loja não entrega no seu endereço, o app avisa logo na lista.
+
+ACHE O QUE VOCÊ QUER
+Busque pelo nome da loja ou pelo prato: "pizza", "açaí", "x-burguer". Não precisa acertar o acento.
 
 JÁ ESTÁ NO RESTAURANTE? LEIA O QR DA MESA
-Aponte a câmera para o QR Code colado na mesa e o cardápio abre no seu celular. Você pede sem esperar alguém anotar, e o pedido vai direto para a cozinha com o número da mesa. Se preferir, digite o código impresso embaixo do QR: funciona sem câmera.
+Aponte a câmera para o QR Code colado na mesa e o cardápio abre no seu celular. O pedido vai direto para a cozinha com o número da mesa — e, se bater vontade de sobremesa, você pede mais no mesmo pedido. Sem câmera? Digite o código impresso embaixo do QR.
 
-PAGUE COMO O RESTAURANTE ACEITA
-Pix na hora, cartão pelo aplicativo, ou cartão e dinheiro na entrega. Cada loja mostra só o que ela realmente recebe. No Pix, o dinheiro vai direto para a conta do restaurante.
+PAGUE AO RECEBER
+Dinheiro, cartão ou Pix na maquininha, na entrega, no balcão ou na mesa. O dinheiro vai direto para o restaurante. Algumas lojas aceitam também o Pix pelo app, com a chave da própria loja.
 
 ACOMPANHE O PEDIDO
-Recebido, em preparo, pronto, saiu para entrega. Você vê onde o pedido está e, durante a entrega, onde o entregador está no mapa.
+Recebido, em preparo, pronto, saiu para entrega. Você recebe o aviso no celular a cada etapa, mesmo com o app fechado, e durante a entrega vê no mapa onde o entregador está.
 
 DESISTIU? CANCELE
-Enquanto o restaurante não começou a preparar, você cancela pelo aplicativo.
+Enquanto o restaurante não aceitou, você cancela pelo próprio aplicativo.
 
 PARA QUEM TEM RESTAURANTE
-O mesmo aplicativo abre o balcão: os pedidos chegam com som, entram num quadro que vai de "chegou" a "saiu para entrega", e podem sair impressos na impressora térmica automaticamente. O cadastro da loja é feito no site, sem mensalidade, com seus próprios entregadores.
+O mesmo aplicativo abre o balcão: o pedido novo chega com som e aviso no celular, entra num quadro que vai de "chegou" a "saiu para entrega" e pode sair impresso na impressora térmica. Lance pedidos do balcão e do telefone, edite pedidos, receba no caixa com fundo e sangria, e acompanhe o movimento do dia. Entregadores próprios, sem mensalidade.
 
 O Tronvix Fácil não exibe anúncios e não vende seus dados.

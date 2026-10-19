@@ -34,7 +34,10 @@ const _capturas = <(String, String, String)>[
   ('1-inicio', 'Delivery e mesa', 'O restaurante perto de você, ou o QR da mesa onde você já está'),
   ('2-mesa', 'Peça da mesa', 'Leia o QR, monte o pedido e ele cai direto na cozinha'),
   ('3-cardapio', 'Cardápio de verdade', 'Preço, descrição e promoção, como a loja cadastrou hoje'),
-  ('4-pagamento', 'Pague como quiser', 'Pix na hora, cartão ou dinheiro na entrega'),
+  // Sem captura por ora: a de setembro mostrava "cartão pelo aplicativo", que
+  // saiu. A Apple recusa captura que mostra o que o app nao faz. Volta quando
+  // houver uma tela nova de `loja/telas/4-pagamento.png`.
+  // ('4-pagamento', 'Pague ao receber', 'Dinheiro, cartão ou Pix na maquininha'),
   ('5-carrinho', 'Sem surpresa no total', 'Entrega e desconto na conta antes de você confirmar'),
 ];
 
