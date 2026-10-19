@@ -14,6 +14,7 @@ const MENU: ItemDeMenu[] = [
   { rotulo: "Banners", href: "/admin/banners", icone: "banners" },
   { rotulo: "Categorias", href: "/admin/categorias", icone: "categorias" },
   { rotulo: "Relatórios", href: "/admin/relatorios", icone: "relatorios" },
+  { rotulo: "Erros", href: "/admin/erros", icone: "erros" },
   { rotulo: "Configurações", href: "/admin/configuracoes", icone: "configuracoes" },
 ]
 

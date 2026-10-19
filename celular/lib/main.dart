@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'ambiente.dart';
 import 'cliente/inicio.dart';
 import 'comum/avisos_no_celular.dart';
+import 'comum/registro_de_erros.dart';
 import 'comum/sons.dart';
 import 'comum/widgets.dart';
 import 'dados/carrinho.dart';
@@ -30,6 +31,8 @@ Future<void> prepararApp() async {
 
 void main() async {
   await prepararApp();
+  // Depois do Supabase, que é por onde o erro viaja.
+  RegistroDeErros.ligar();
   // Fora de `prepararApp` de propósito: o teste de widget passa por lá, e no
   // teste não há Firebase.
   await AvisosNoCelular.iniciar();

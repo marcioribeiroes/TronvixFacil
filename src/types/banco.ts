@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 37   Enums: 15   Funcoes: 32
+// Tabelas: 38   Enums: 15   Funcoes: 33
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -200,6 +200,50 @@ export interface Database {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      app_errors: {
+        Row: {
+          id: string
+          created_at: string
+          source: string
+          message: string
+          stack: string | null
+          url: string | null
+          version: string | null
+          user_id: string | null
+          context: Json | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          source: string
+          message: string
+          stack?: string | null
+          url?: string | null
+          version?: string | null
+          user_id?: string | null
+          context?: Json | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          source?: string
+          message?: string
+          stack?: string | null
+          url?: string | null
+          version?: string | null
+          user_id?: string | null
+          context?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_errors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           }
         ]
@@ -2264,6 +2308,17 @@ export interface Database {
         Args: {
           p_token: string
           p_plataforma: string
+        }
+        Returns: undefined
+      }
+      registrar_erro: {
+        Args: {
+          p_origem: string
+          p_mensagem: string
+          p_pilha?: string
+          p_endereco?: string
+          p_versao?: string
+          p_contexto?: Json
         }
         Returns: undefined
       }

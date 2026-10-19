@@ -6,6 +6,7 @@ import {
   BarChart3,
   Bike,
   Building2,
+  Bug,
   ClipboardList,
   DollarSign,
   Image as ImageIcon,
@@ -61,6 +62,7 @@ const ICONES = {
   adicionais: PlusSquare,
   mesas: QrCode,
   caixa: Wallet,
+  erros: Bug,
 } as const satisfies Record<string, LucideIcon>
 
 export type NomeDoIcone = keyof typeof ICONES
