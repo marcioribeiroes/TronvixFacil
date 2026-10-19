@@ -1,0 +1,5 @@
+- Aviso no celular: pedido novo para a loja e andamento do pedido para o cliente, com o app fechado
+- Taxa de entrega por distância, e aviso quando a loja não entrega no seu endereço
+- Busca por loja, categoria ou prato, sem precisar de acento
+- Pague ao receber: dinheiro, cartão ou Pix na maquininha
+- Balcão: caixa com fundo e sangria, novo pedido, editar pedido e pedir mais na mesa
