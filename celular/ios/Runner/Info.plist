@@ -71,6 +71,10 @@
 	     aponta o celular para a mesa. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Para ler o QR Code da mesa e você pedir pelo próprio celular.</string>
+	<!-- So HTTPS do proprio sistema: criptografia isenta. Sem esta chave, a
+	     Apple segura cada build no TestFlight ate alguem responder a pergunta. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

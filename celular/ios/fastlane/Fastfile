@@ -111,30 +111,38 @@ platform :ios do
   #
   # O Flutter compila FORA do fastlane, pelo `rodar.sh`: e ele que passa as
   # chaves do Supabase (--dart-define). Compilado de dentro do fastlane, o app
-  # sairia sem elas — abrindo na tela de "falta configurar" — e o Ruby do
-  # fastlane ainda quebra o CocoaPods do `flutter build`.
+  # sairia sem elas, e o Ruby do fastlane ainda quebra o CocoaPods.
   #
-  # Assinatura manual, de proposito. O Xcode deste Mac nao tem conta logada, e
-  # a assinatura "na nuvem" pede uma permissao que a chave de API nao tem. O
-  # certificado Apple Distribution do time esta no keychain; o `sigh` cria (ou
-  # reaproveita) o perfil da App Store pela API — com o push que o entitlement
-  # pede — e o export usa esse perfil.
+  # Testado assim em 2026-10-19 (build 3):
+  #   1. archive com a chave de API no xcodebuild (-authenticationKey*): o
+  #      Xcode deste Mac nao tem conta logada, e e a chave que deixa ele
+  #      resolver a assinatura do archive;
+  #   2. o `sigh` cria ou reaproveita o perfil "AppStore" pela API, com o push
+  #      que o entitlement pede;
+  #   3. export MANUAL com esse perfil e o Apple Distribution do keychain — a
+  #      assinatura "na nuvem" pede uma permissao que a chave nao tem.
   lane :beta do
     api = chave
     sigh(api_key: api, app_identifier: APP)
     perfil = lane_context[SharedValues::SIGH_NAME]
+    autenticacao = "-allowProvisioningUpdates " \
+      "-authenticationKeyPath #{File.expand_path(ENV.fetch("ASC_KEY_P8"))} " \
+      "-authenticationKeyID #{ENV.fetch("ASC_KEY_ID")} " \
+      "-authenticationKeyIssuerID #{ENV.fetch("ASC_ISSUER_ID")}"
     build_app(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
       configuration: "Release",
       output_directory: File.expand_path("../../build/ios/fastlane", __dir__),
+      output_name: "Runner.ipa",
+      xcargs: autenticacao,
       export_method: "app-store",
       export_options: {
         signingStyle: "manual",
+        teamID: "5V9K79AGTR",
+        signingCertificate: "Apple Distribution",
         provisioningProfiles: { APP => perfil },
       },
-      xcargs: "CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' " \
-        "PROVISIONING_PROFILE_SPECIFIER='#{perfil}'",
     )
     upload_to_testflight(api_key: api, skip_waiting_for_build_processing: true)
   end
