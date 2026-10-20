@@ -7,6 +7,6 @@ copyright("#{Time.now.year} Tronvix")
 # Estes três a Apple recusa em branco. O de privacidade precisa ser a URL
 # pública da política — a mesma que a Play exige.
 # Quando facil.tronvix.online abrir (CNAME na Cloudflare), trocar o endereco.
-privacy_url({ "pt-BR" => "https://tronvix-facil.vercel.app/privacidade" })
-support_url({ "pt-BR" => "https://tronvix-facil.vercel.app/suporte" })
-marketing_url({ "pt-BR" => "https://tronvix-facil.vercel.app" })
+privacy_url({ "pt-BR" => "https://facil.tronvix.com.br/privacidade" })
+support_url({ "pt-BR" => "https://facil.tronvix.com.br/suporte" })
+marketing_url({ "pt-BR" => "https://facil.tronvix.com.br" })
