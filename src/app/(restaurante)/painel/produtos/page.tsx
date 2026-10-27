@@ -20,7 +20,7 @@ export default async function PaginaDeProdutos() {
     supabase
       .from("products")
       .select(
-        "id, category_id, name, description, image_url, price_cents, promo_price_cents, promo_ends_at, is_available, is_featured, track_stock, stock_quantity, sold_count",
+        "id, category_id, name, description, image_url, price_cents, promo_price_cents, promo_ends_at, is_available, is_featured, track_stock, stock_quantity, sold_count, barcode",
       )
       .eq("restaurant_id", vinculo.restauranteId)
       .is("deleted_at", null)

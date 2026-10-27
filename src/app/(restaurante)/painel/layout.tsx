@@ -21,6 +21,7 @@ const MENU_DA_GESTAO: ItemDeMenu[] = [
   { rotulo: "Cardápio", href: "/painel/cardapio", icone: "cardapio" },
   { rotulo: "Categorias", href: "/painel/categorias", icone: "categorias" },
   { rotulo: "Produtos", href: "/painel/produtos", icone: "produtos" },
+  { rotulo: "Estoque", href: "/painel/estoque", icone: "estoque" },
   { rotulo: "Adicionais", href: "/painel/adicionais", icone: "adicionais" },
   { rotulo: "Mesas", href: "/painel/mesas", icone: "mesas" },
   { rotulo: "Promoções", href: "/painel/promocoes", icone: "cupons" },

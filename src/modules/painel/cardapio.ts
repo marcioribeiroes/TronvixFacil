@@ -23,7 +23,13 @@ import { exigirGestao, exigirVinculo } from "@/modules/auth/sessao"
 export type ResultadoDaAcao = { ok: true } | { ok: false; erro: string; campo?: string }
 
 function recarregar() {
-  for (const rota of ["/painel/cardapio", "/painel/produtos", "/painel/categorias", "/painel/adicionais"]) {
+  for (const rota of [
+    "/painel/cardapio",
+    "/painel/produtos",
+    "/painel/categorias",
+    "/painel/adicionais",
+    "/painel/estoque",
+  ]) {
     revalidatePath(rota)
   }
 }
@@ -119,6 +125,7 @@ export async function salvarProduto(dados: {
   destaque: boolean
   controlaEstoque: boolean
   estoque?: string
+  codigoDeBarras?: string
   /**
    * A foto já está no balde quando isto roda — quem enviou foi o navegador,
    * com a sessão da pessoa. Aqui só se grava o endereço.
@@ -155,6 +162,17 @@ export async function salvarProduto(dados: {
     return { ok: false, erro: "O estoque é um número inteiro.", campo: "estoque" }
   }
 
+  // O leitor manda o codigo cru; quem digita pode deixar espaco no meio ao
+  // copiar da nota. Sem espaco nenhum, e o mesmo codigo que o leitor vai ler.
+  const codigoDeBarras = (dados.codigoDeBarras ?? "").replace(/\s+/g, "") || null
+  if (codigoDeBarras && codigoDeBarras.length > 64) {
+    return {
+      ok: false,
+      erro: "O código de barras tem no máximo 64 caracteres.",
+      campo: "codigoDeBarras",
+    }
+  }
+
   const campos = {
     restaurant_id: vinculo.restauranteId,
     category_id: dados.categoriaId,
@@ -172,12 +190,20 @@ export async function salvarProduto(dados: {
     is_featured: dados.destaque,
     track_stock: dados.controlaEstoque,
     stock_quantity: estoque,
+    barcode: codigoDeBarras,
   }
 
   const { error } = dados.id
     ? await supabase.from("products").update(campos).eq("id", dados.id)
     : await supabase.from("products").insert(campos)
 
+  if (error?.code === "23505" && error.message.includes("products_barcode_unique")) {
+    return {
+      ok: false,
+      erro: "Já existe outro produto com esse código de barras.",
+      campo: "codigoDeBarras",
+    }
+  }
   if (error) return { ok: false, erro: error.message }
 
   recarregar()

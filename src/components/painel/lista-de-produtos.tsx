@@ -31,6 +31,7 @@ type Produto = {
   track_stock: boolean
   stock_quantity: number
   sold_count: number
+  barcode: string | null
 }
 
 type Categoria = { id: string; nome: string }
@@ -239,6 +240,7 @@ function FormularioDeProduto({
   const [destaque, setDestaque] = useState(produto?.is_featured ?? false)
   const [controlaEstoque, setControlaEstoque] = useState(produto?.track_stock ?? false)
   const [estoque, setEstoque] = useState(String(produto?.stock_quantity ?? 0))
+  const [codigoDeBarras, setCodigoDeBarras] = useState(produto?.barcode ?? "")
 
   // A foto entra no balde na hora de escolher, mas só vira do produto quando o
   // formulário é salvo. Produto novo ainda não tem id quando a foto sobe — e
@@ -260,6 +262,7 @@ function FormularioDeProduto({
         destaque,
         controlaEstoque,
         estoque,
+        codigoDeBarras,
         imagemUrl,
       })
       if (r.ok) aoFechar()
@@ -329,6 +332,23 @@ function FormularioDeProduto({
             onChange={(e) => setPreco(e.target.value)}
             placeholder="27,90"
             inputMode="decimal"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <Label htmlFor="codigo-de-barras">Código de barras</Label>
+          {/* O leitor USB e um teclado que digita o codigo e aperta Enter.
+              Enter aqui nao pode salvar o formulario pela metade. */}
+          <Input
+            id="codigo-de-barras"
+            value={codigoDeBarras}
+            onChange={(e) => setCodigoDeBarras(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.preventDefault()
+            }}
+            placeholder="leia com o leitor ou digite (opcional)"
+            inputMode="numeric"
+            autoComplete="off"
           />
         </div>
 

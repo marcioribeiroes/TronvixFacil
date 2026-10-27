@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   Bike,
+  Boxes,
   Building2,
   Bug,
   ClipboardList,
@@ -59,6 +60,7 @@ const ICONES = {
   configuracoes: Settings,
   cardapio: UtensilsCrossed,
   produtos: Package,
+  estoque: Boxes,
   adicionais: PlusSquare,
   mesas: QrCode,
   caixa: Wallet,
