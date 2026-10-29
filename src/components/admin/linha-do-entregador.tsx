@@ -22,6 +22,17 @@ export type EntregadorNaLista = {
   avaliacoes: number
   loja: string | null
   desde: string
+  /** So o autonomo tem: o cadastro com documento que a plataforma analisa. */
+  cadastro: {
+    cpf: string | null
+    idade: number | null
+    cidade: string | null
+    pix: string | null
+    modelo: string | null
+    cor: string | null
+    motivo: string | null
+    documentos: { rotulo: string; url: string }[]
+  } | null
 }
 
 const SITUACAO: Record<
@@ -30,7 +41,12 @@ const SITUACAO: Record<
 > = {
   pending: { rotulo: "Esperando aprovação", variante: "outline" },
   approved: { rotulo: "Aprovado", variante: "default" },
-  suspended: { rotulo: "Fora", variante: "destructive" },
+  suspended: { rotulo: "Suspenso", variante: "destructive" },
+  rejected: { rotulo: "Recusado", variante: "destructive" },
+}
+
+function cpfFormatado(cpf: string) {
+  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
 }
 
 const VEICULO: Record<string, string> = {
@@ -53,9 +69,19 @@ export function LinhaDoEntregador({
   const situacao = SITUACAO[c.situacao] ?? { rotulo: c.situacao, variante: "outline" as const }
 
   function decidir(novo: Enums<"courier_status">) {
+    let motivo: string | undefined
+    if (novo === "rejected" || novo === "suspended") {
+      const resposta = window.prompt(
+        novo === "rejected"
+          ? "Por que o cadastro foi recusado? O entregador vai ler e poderá corrigir."
+          : "Por que suspender? O entregador vai ler.",
+      )
+      if (resposta === null) return
+      motivo = resposta
+    }
     setErro(null)
     iniciar(async () => {
-      const resultado = await decidirSobreEntregador(c.id, novo)
+      const resultado = await decidirSobreEntregador(c.id, novo, motivo)
       if (!resultado.ok) setErro(resultado.erro)
     })
   }
@@ -103,7 +129,7 @@ export function LinhaDoEntregador({
                 size="sm"
                 variant="outline"
                 disabled={enviando}
-                onClick={() => decidir("suspended")}
+                onClick={() => decidir(c.loja ? "suspended" : "rejected")}
               >
                 <X className="size-4" aria-hidden="true" />
                 Recusar
@@ -127,6 +153,51 @@ export function LinhaDoEntregador({
           )}
         </div>
       </div>
+
+      {c.cadastro ? (
+        <div className="mt-4 space-y-3 border-t pt-4">
+          <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {(
+              [
+                ["CPF", c.cadastro.cpf ? cpfFormatado(c.cadastro.cpf) : null],
+                ["Idade", c.cadastro.idade !== null ? `${c.cadastro.idade} anos` : null],
+                ["Cidade", c.cadastro.cidade],
+                ["Veículo", [c.cadastro.modelo, c.cadastro.cor].filter(Boolean).join(" · ") || null],
+                ["Chave Pix", c.cadastro.pix],
+              ] as const
+            ).map(([rotulo, valor]) => (
+              <div key={rotulo} className="flex gap-2">
+                <dt className="text-muted-foreground">{rotulo}</dt>
+                <dd className="font-medium">{valor ?? "—"}</dd>
+              </div>
+            ))}
+          </dl>
+          {c.cadastro.motivo ? (
+            <p className="text-sm">
+              <span className="text-muted-foreground">Motivo informado: </span>
+              {c.cadastro.motivo}
+            </p>
+          ) : null}
+          {c.cadastro.documentos.length > 0 ? (
+            <ul className="flex flex-wrap gap-3">
+              {c.cadastro.documentos.map((d) => (
+                <li key={d.rotulo}>
+                  <a href={d.url} target="_blank" rel="noopener noreferrer" className="block">
+                    {/* URL assinada de validade curta: o documento e privado. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={d.url}
+                      alt={d.rotulo}
+                      className="h-32 w-44 rounded-lg border object-cover"
+                    />
+                    <span className="mt-1 block text-xs text-muted-foreground">{d.rotulo}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       {erro ? <p className="mt-2 text-sm text-destructive">{erro}</p> : null}
     </div>

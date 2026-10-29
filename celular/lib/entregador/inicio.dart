@@ -22,6 +22,7 @@ import '../modelos/modelos.dart';
 import '../sessao.dart';
 import '../tema.dart';
 import 'cadastro.dart';
+import 'cadastro_autonomo.dart';
 import 'corrida.dart';
 
 class InicioDoEntregador extends StatefulWidget {
@@ -479,17 +480,44 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
   /// Entregador não aprovado não pode nem ficar disponível — é o gatilho
   /// `app.guard_courier_platform_fields` que recusa. A tela diz isso em vez de
   /// oferecer um botão que o banco vai negar.
-  Widget _aguardandoAprovacao(Entregador eu) => Vazio(
-        icone: Icons.hourglass_top,
-        titulo: eu.status == StatusDoEntregador.suspenso
-            ? 'Seu cadastro está suspenso'
-            : 'Cadastro em análise',
-        detalhe: eu.status == StatusDoEntregador.suspenso
-            ? 'Fale com ${eu.nomeDoRestaurante ?? 'o estabelecimento'} para '
-                'voltar a receber corridas.'
-            : 'Assim que ${eu.nomeDoRestaurante ?? 'o estabelecimento'} '
-                'aprovar, as corridas aparecem aqui.',
-      );
+  ///
+  /// O autônomo não tem estabelecimento: quem analisa é a plataforma. Recusado,
+  /// ele lê o motivo e volta ao cadastro para corrigir e reenviar.
+  Widget _aguardandoAprovacao(Entregador eu) {
+    final quemAprova = eu.nomeDoRestaurante ??
+        (eu.autonomo ? 'a equipe do Tronvix Fácil' : 'o estabelecimento');
+    return switch (eu.status) {
+      StatusDoEntregador.recusado => Vazio(
+          icone: Icons.report_outlined,
+          titulo: 'Seu cadastro precisa de correção',
+          detalhe: eu.motivo ?? 'Corrija os dados e envie de novo.',
+          acao: eu.autonomo
+              ? FilledButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TelaCadastroAutonomo(motivoDaRecusa: eu.motivo),
+                    ),
+                  ),
+                  child: const Text('Corrigir cadastro'),
+                )
+              : null,
+        ),
+      StatusDoEntregador.suspenso => Vazio(
+          icone: Icons.block,
+          titulo: 'Seu cadastro está suspenso',
+          detalhe: [
+            if (eu.motivo != null) eu.motivo!,
+            'Fale com $quemAprova para voltar a receber corridas.',
+          ].join('\n\n'),
+        ),
+      _ => Vazio(
+          icone: Icons.hourglass_top,
+          titulo: 'Cadastro em análise',
+          detalhe: 'Assim que $quemAprova aprovar, as corridas aparecem aqui.',
+        ),
+    };
+  }
 }
 
 class _Recado extends StatelessWidget {

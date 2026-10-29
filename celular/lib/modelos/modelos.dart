@@ -716,6 +716,7 @@ class Entregador {
     this.restauranteId,
     this.nomeDoRestaurante,
     this.nome,
+    this.motivo,
   });
 
   final String id;
@@ -735,6 +736,9 @@ class Entregador {
   /// Só vem preenchido na lista que o balcão enxerga.
   final String? nome;
 
+  /// Por que foi recusado ou suspenso — o entregador lê e corrige.
+  final String? motivo;
+
   factory Entregador.deMapa(Map<String, dynamic> m) => Entregador(
         id: m['id'] as String,
         usuarioId: m['user_id'] as String,
@@ -749,6 +753,7 @@ class Entregador {
         nomeDoRestaurante:
             aninhado(m['restaurants'])?['name'] as String?,
         nome: aninhado(m['profiles'])?['full_name'] as String?,
+        motivo: m['review_note'] as String?,
       );
 
   bool get podeTrabalhar => status == StatusDoEntregador.aprovado;

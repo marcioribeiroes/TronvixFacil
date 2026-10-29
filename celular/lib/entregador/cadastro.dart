@@ -1,9 +1,12 @@
-/// Cadastro de entregador.
+/// Cadastro de entregador, em dois caminhos.
 ///
-/// A pessoa escolhe para qual estabelecimento quer levar comida, e o cadastro
-/// nasce pendente. Quem aprova é o estabelecimento — está no banco, em
+/// Para um estabelecimento: a pessoa escolhe para qual quer levar comida, e o
+/// cadastro nasce pendente. Quem aprova é o estabelecimento — está no banco, em
 /// `app.guard_courier_platform_fields`, e a razão é simples: é ele quem conhece
 /// a pessoa e é o dinheiro dele que vai na mochila.
+///
+/// Autônomo: entrega para vários estabelecimentos, manda documentos, e quem
+/// aprova é a plataforma (cadastro_autonomo.dart).
 library;
 
 import 'package:flutter/material.dart';
@@ -13,6 +16,7 @@ import '../dados/corridas.dart';
 import '../modelos/modelos.dart';
 import '../sessao.dart';
 import '../tema.dart';
+import 'cadastro_autonomo.dart';
 
 const _veiculos = {
   'motorcycle': 'Moto',
@@ -21,15 +25,92 @@ const _veiculos = {
   'foot': 'A pé',
 };
 
-class TelaCadastroDeEntregador extends StatefulWidget {
+/// Depois de enviar: volta para a primeira tela e abre o fluxo do entregador,
+/// que mostra o "em análise". Vale para os dois caminhos.
+void cadastroEnviado(BuildContext context) {
+  avisar(context, 'Cadastro enviado. Aguarde a aprovação.');
+  Navigator.of(context).popUntil((rota) => rota.isFirst);
+  Sessao.instancia.trocarDeFluxo(Fluxo.entregador);
+}
+
+/// A escolha do caminho.
+class TelaCadastroDeEntregador extends StatelessWidget {
   const TelaCadastroDeEntregador({super.key});
 
   @override
-  State<TelaCadastroDeEntregador> createState() =>
-      _TelaCadastroDeEntregadorState();
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Entregar pelo Tronvix Fácil')),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const Text('Como você quer trabalhar?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+            _Caminho(
+              icone: Icons.storefront,
+              titulo: 'Para um estabelecimento',
+              detalhe: 'Você entrega para um restaurante específico. Ele '
+                  'aprova seu cadastro.',
+              aoTocar: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const TelaCadastroParaEstabelecimento())),
+            ),
+            const SizedBox(height: 12),
+            _Caminho(
+              icone: Icons.two_wheeler,
+              titulo: 'Autônomo',
+              detalhe: 'Entrega para vários estabelecimentos da sua cidade. '
+                  'Pede CNH, documento do veículo e selfie; a plataforma '
+                  'aprova.',
+              aoTocar: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const TelaCadastroAutonomo())),
+            ),
+          ],
+        ),
+      );
 }
 
-class _TelaCadastroDeEntregadorState extends State<TelaCadastroDeEntregador> {
+class _Caminho extends StatelessWidget {
+  const _Caminho({
+    required this.icone,
+    required this.titulo,
+    required this.detalhe,
+    required this.aoTocar,
+  });
+
+  final IconData icone;
+  final String titulo;
+  final String detalhe;
+  final VoidCallback aoTocar;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          leading: Icon(icone, size: 32, color: Cores.marca),
+          title: Text(titulo,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(detalhe, style: const TextStyle(height: 1.4)),
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: aoTocar,
+        ),
+      );
+}
+
+class TelaCadastroParaEstabelecimento extends StatefulWidget {
+  const TelaCadastroParaEstabelecimento({super.key});
+
+  @override
+  State<TelaCadastroParaEstabelecimento> createState() =>
+      _TelaCadastroParaEstabelecimentoState();
+}
+
+class _TelaCadastroParaEstabelecimentoState
+    extends State<TelaCadastroParaEstabelecimento> {
   final _placa = TextEditingController();
 
   List<Restaurante> _estabelecimentos = const [];
@@ -82,14 +163,7 @@ class _TelaCadastroDeEntregadorState extends State<TelaCadastroDeEntregador> {
         placa: _placa.text,
       );
       await Sessao.instancia.carregar();
-      if (!mounted) return;
-      avisar(context, 'Cadastro enviado. Aguarde a aprovação.');
-      // Aberta pela conta do cliente, a tela sai da frente e o aplicativo vai
-      // para o fluxo do entregador, que mostra o "em análise".
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-        Sessao.instancia.trocarDeFluxo(Fluxo.entregador);
-      }
+      if (mounted) cadastroEnviado(context);
     } catch (e) {
       if (mounted) avisar(context, e.toString(), erro: true);
     } finally {

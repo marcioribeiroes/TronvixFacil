@@ -27,10 +27,36 @@ export default async function PaginaDeEntregadores() {
     // couriers aponta para profiles duas vezes - user_id e approved_by - e o
     // PostgREST recusa o embed sem a dica de qual chave usar.
     .select(
-      "id, status, availability, vehicle_type, vehicle_plate, deliveries_count, rating_avg, rating_count, created_at, restaurant_id, profiles!couriers_user_id_fkey(full_name, email, phone), restaurants(name)",
+      "id, status, availability, vehicle_type, vehicle_plate, deliveries_count, rating_avg, rating_count, created_at, restaurant_id, cpf, birth_date, city, pix_key, vehicle_model, vehicle_color, review_note, document_cnh_path, document_vehicle_path, document_selfie_path, profiles!couriers_user_id_fkey(full_name, email, phone), restaurants(name)",
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
+
+  // Os documentos ficam em balde privado. Uma hora de validade: o bastante
+  // para analisar a fila, e o link copiado nao vira acesso permanente.
+  const caminhos = (entregadores ?? []).flatMap((c) =>
+    [c.document_cnh_path, c.document_vehicle_path, c.document_selfie_path].filter(
+      (x): x is string => Boolean(x),
+    ),
+  )
+  const assinadas = new Map<string, string>()
+  if (caminhos.length > 0) {
+    const { data } = await supabase.storage
+      .from("documentos-entregador")
+      .createSignedUrls(caminhos, 3600)
+    for (const d of data ?? []) {
+      if (d.path && d.signedUrl) assinadas.set(d.path, d.signedUrl)
+    }
+  }
+
+  const hoje = new Date()
+  const idade = (nascimento: string | null) => {
+    if (!nascimento) return null
+    const n = new Date(`${nascimento}T12:00:00`)
+    let anos = hoje.getFullYear() - n.getFullYear()
+    if (hoje < new Date(hoje.getFullYear(), n.getMonth(), n.getDate())) anos -= 1
+    return anos
+  }
 
   const lista: EntregadorNaLista[] = (entregadores ?? []).map((c) => ({
     id: c.id,
@@ -46,6 +72,27 @@ export default async function PaginaDeEntregadores() {
     avaliacoes: c.rating_count,
     loja: c.restaurants?.name ?? null,
     desde: c.created_at,
+    cadastro: c.cpf
+      ? {
+          cpf: c.cpf,
+          idade: idade(c.birth_date),
+          cidade: c.city,
+          pix: c.pix_key,
+          modelo: c.vehicle_model,
+          cor: c.vehicle_color,
+          motivo: c.review_note,
+          documentos: (
+            [
+              ["CNH", c.document_cnh_path],
+              ["Documento do veículo", c.document_vehicle_path],
+              ["Selfie com a CNH", c.document_selfie_path],
+            ] as const
+          ).flatMap(([rotulo, caminho]) => {
+            const url = caminho ? assinadas.get(caminho) : undefined
+            return url ? [{ rotulo, url }] : []
+          }),
+        }
+      : null,
   }))
 
   const esperando = lista.filter((c) => c.situacao === "pending")

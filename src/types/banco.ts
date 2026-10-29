@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 44   Enums: 15   Funcoes: 40
+// Tabelas: 44   Enums: 15   Funcoes: 42
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -717,6 +717,17 @@ export interface Database {
           updated_at: string
           deleted_at: string | null
           restaurant_id: string | null
+          cpf: string | null
+          birth_date: string | null
+          vehicle_model: string | null
+          vehicle_color: string | null
+          city: string | null
+          pix_key: string | null
+          document_cnh_path: string | null
+          document_vehicle_path: string | null
+          document_selfie_path: string | null
+          review_note: string | null
+          submitted_at: string | null
         }
         Insert: {
           id?: string
@@ -738,6 +749,17 @@ export interface Database {
           updated_at?: string
           deleted_at?: string | null
           restaurant_id?: string | null
+          cpf?: string | null
+          birth_date?: string | null
+          vehicle_model?: string | null
+          vehicle_color?: string | null
+          city?: string | null
+          pix_key?: string | null
+          document_cnh_path?: string | null
+          document_vehicle_path?: string | null
+          document_selfie_path?: string | null
+          review_note?: string | null
+          submitted_at?: string | null
         }
         Update: {
           id?: string
@@ -759,6 +781,17 @@ export interface Database {
           updated_at?: string
           deleted_at?: string | null
           restaurant_id?: string | null
+          cpf?: string | null
+          birth_date?: string | null
+          vehicle_model?: string | null
+          vehicle_color?: string | null
+          city?: string | null
+          pix_key?: string | null
+          document_cnh_path?: string | null
+          document_vehicle_path?: string | null
+          document_selfie_path?: string | null
+          review_note?: string | null
+          submitted_at?: string | null
         }
         Relationships: [
           {
@@ -2456,6 +2489,22 @@ export interface Database {
         }
         Returns: unknown[]
       }
+      cadastrar_entregador_autonomo: {
+        Args: {
+          p_cpf: string
+          p_nascimento: string
+          p_veiculo: string
+          p_placa: string
+          p_modelo: string
+          p_cor: string
+          p_cidade: string
+          p_chave_pix: string
+          p_cnh: string
+          p_documento_do_veiculo: string
+          p_selfie: string
+        }
+        Returns: string
+      }
       cadastrar_estabelecimento: {
         Args: {
           p_nome: string
@@ -2492,6 +2541,12 @@ export interface Database {
           p_minutos: number
         }
         Returns: undefined
+      }
+      cidades_para_entregador: {
+        Args: {
+          [chave: string]: never
+        }
+        Returns: string[]
       }
       confirmar_pix: {
         Args: {
@@ -2713,7 +2768,7 @@ export interface Database {
       cash_movement_type: "opening_float" | "withdrawal"
       coupon_scope: "platform" | "restaurant"
       courier_availability: "offline" | "online" | "on_delivery"
-      courier_status: "pending" | "approved" | "suspended"
+      courier_status: "pending" | "approved" | "suspended" | "rejected"
       delivery_status: "pending" | "searching_courier" | "assigned" | "heading_to_restaurant" | "picked_up" | "heading_to_customer" | "delivered" | "cancelled"
       discount_type: "percentage" | "fixed" | "free_shipping"
       fulfillment_type: "delivery" | "pickup" | "dine_in"

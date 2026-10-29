@@ -68,3 +68,58 @@ export async function cadastrarEntregador(entrada: {
   revalidatePath("/entregas")
   return { ok: true }
 }
+
+/**
+ * O cadastro do autonomo da plataforma: o que o banco precisa para alguem que
+ * nenhum restaurante conhece. As fotos ja subiram direto do navegador para o
+ * balde privado; aqui chegam so os caminhos, e o banco confere que estao na
+ * pasta da propria pessoa.
+ */
+const schemaDoAutonomo = z.object({
+  cpf: z.string().transform((c) => c.replace(/\D/g, "")).pipe(z.string().length(11, "Informe o CPF.")),
+  nascimento: z.iso.date("Informe a data de nascimento."),
+  veiculo: z.enum(VEICULOS, "Escolha como você entrega."),
+  placa: z.string().trim(),
+  modelo: z.string().trim().max(60),
+  cor: z.string().trim().max(30),
+  cidade: z.string().trim().min(1, "Escolha a cidade."),
+  pix: z.string().trim().min(5, "Informe a chave Pix para receber.").max(77),
+  cnh: z.string().min(1, "Envie a foto da CNH (ou documento com foto)."),
+  documentoDoVeiculo: z.string(),
+  selfie: z.string().min(1, "Envie a selfie segurando o documento."),
+})
+
+export async function cadastrarAutonomo(
+  entrada: z.input<typeof schemaDoAutonomo>,
+): Promise<ResultadoDoCadastro> {
+  await exigirUsuario("/entregas/cadastro")
+
+  const dados = schemaDoAutonomo.safeParse(entrada)
+  if (!dados.success) {
+    return { ok: false, erro: dados.error.issues[0]?.message ?? "Confira os dados." }
+  }
+  const d = dados.data
+  const motorizado = d.veiculo === "motorcycle" || d.veiculo === "car"
+  if (motorizado && !d.documentoDoVeiculo) {
+    return { ok: false, erro: "Envie a foto do documento do veículo (CRLV)." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("cadastrar_entregador_autonomo", {
+    p_cpf: d.cpf,
+    p_nascimento: d.nascimento,
+    p_veiculo: d.veiculo,
+    p_placa: d.placa,
+    p_modelo: d.modelo,
+    p_cor: d.cor,
+    p_cidade: d.cidade,
+    p_chave_pix: d.pix,
+    p_cnh: d.cnh,
+    p_documento_do_veiculo: d.documentoDoVeiculo,
+    p_selfie: d.selfie,
+  })
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/entregas")
+  return { ok: true }
+}

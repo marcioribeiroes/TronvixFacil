@@ -14,6 +14,7 @@ export 'package:supabase_flutter/supabase_flutter.dart'
     show
         PostgrestException,
         AuthException,
+        FileOptions,
         RealtimeChannel,
         PostgresChangeEvent,
         PostgresChangeFilter,

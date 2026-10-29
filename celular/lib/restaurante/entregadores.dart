@@ -125,7 +125,7 @@ class _TelaEntregadoresState extends State<TelaEntregadores> {
   Widget _linha(Entregador e) {
     final cor = switch (e.status) {
       StatusDoEntregador.aprovado => Cores.sucesso,
-      StatusDoEntregador.suspenso => Cores.perigo,
+      StatusDoEntregador.suspenso || StatusDoEntregador.recusado => Cores.perigo,
       StatusDoEntregador.pendente => Cores.atencao,
     };
 
@@ -155,6 +155,7 @@ class _TelaEntregadoresState extends State<TelaEntregadores> {
                 StatusDoEntregador.aprovado => e.disponibilidade.rotulo,
                 StatusDoEntregador.pendente => 'Pendente',
                 StatusDoEntregador.suspenso => 'Suspenso',
+                StatusDoEntregador.recusado => 'Recusado',
               },
               cor: cor,
             ),

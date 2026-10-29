@@ -6,6 +6,8 @@
 /// update não pega nada e a tela avisa que a corrida saiu.
 library;
 
+import 'dart:typed_data';
+
 import '../modelos/modelos.dart';
 import 'localizacao.dart';
 import 'supabase.dart';
@@ -168,6 +170,59 @@ class Corridas {
             'vehicle_type': tipoDeVeiculo,
             'vehicle_plate': (placa?.isEmpty ?? true) ? null : placa,
             'status': StatusDoEntregador.pendente.noBanco,
+          }));
+
+  /// Onde a plataforma aceita autônomo hoje. A lista mora no banco
+  /// (`app.cidades_atendidas`), que recusa qualquer outra.
+  static Future<List<String>> cidadesAtendidas() => executar(() async {
+        final r = await banco.rpc('cidades_para_entregador');
+        return (r as List).cast<String>();
+      });
+
+  /// Sobe a foto de um documento para o balde privado, na pasta da própria
+  /// pessoa — a política do balde não deixa gravar em outra. Devolve o
+  /// caminho, que o cadastro manda ao banco.
+  static Future<String> enviarDocumento(Uint8List foto, String tipo) =>
+      executar(() async {
+        final caminho =
+            '$usuarioId/$tipo-${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await banco.storage.from('documentos-entregador').uploadBinary(
+              caminho,
+              foto,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            );
+        return caminho;
+      });
+
+  /// Cadastro do autônomo da plataforma. Toda a conferência — CPF, idade,
+  /// cidade, placa, documentos na pasta certa — é do banco, em
+  /// `cadastrar_entregador_autonomo`. Reenviar depois de recusado usa a mesma
+  /// chamada.
+  static Future<void> cadastrarAutonomo({
+    required String cpf,
+    required String nascimento,
+    required String tipoDeVeiculo,
+    required String placa,
+    required String modelo,
+    required String cor,
+    required String cidade,
+    required String chavePix,
+    required String cnh,
+    required String? documentoDoVeiculo,
+    required String selfie,
+  }) =>
+      executar(() => banco.rpc('cadastrar_entregador_autonomo', params: {
+            'p_cpf': cpf,
+            'p_nascimento': nascimento,
+            'p_veiculo': tipoDeVeiculo,
+            'p_placa': placa,
+            'p_modelo': modelo,
+            'p_cor': cor,
+            'p_cidade': cidade,
+            'p_chave_pix': chavePix,
+            'p_cnh': cnh,
+            'p_documento_do_veiculo': documentoDoVeiculo,
+            'p_selfie': selfie,
           }));
 
   /// As corridas esperando entregador.

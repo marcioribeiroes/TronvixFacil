@@ -241,7 +241,8 @@ enum DisponibilidadeDoEntregador {
 enum StatusDoEntregador {
   pendente('pending'),
   aprovado('approved'),
-  suspenso('suspended');
+  suspenso('suspended'),
+  recusado('rejected');
 
   const StatusDoEntregador(this.noBanco);
   final String noBanco;

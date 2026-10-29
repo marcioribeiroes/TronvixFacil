@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 
 import {
   CorridasDoEntregador,
@@ -50,7 +51,7 @@ export default async function CorridasDisponiveis() {
         .order("created_at"),
       supabase
         .from("couriers")
-        .select("status, availability, restaurants(name)")
+        .select("status, availability, review_note, restaurants(name)")
         .eq("id", entregadorId)
         .single(),
       supabase
@@ -100,17 +101,35 @@ export default async function CorridasDisponiveis() {
   // online. Mostrar a fila vazia com a chave de online seria prometer trabalho
   // que nao vai chegar.
   if (eu?.status !== "approved") {
-    const loja = eu?.restaurants?.name ?? "o estabelecimento"
+    // Sem estabelecimento, quem analisa e a plataforma.
+    const quemAprova = eu?.restaurants?.name ?? "a equipe do Tronvix Fácil"
     return (
       <div className="mx-auto max-w-lg rounded-xl border bg-card p-6 text-center">
         <h1 className="text-lg font-bold">
-          {eu?.status === "suspended" ? "Cadastro suspenso" : "Cadastro em análise"}
+          {eu?.status === "suspended"
+            ? "Cadastro suspenso"
+            : eu?.status === "rejected"
+              ? "Cadastro recusado"
+              : "Cadastro em análise"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {eu?.status === "suspended"
-            ? `Fale com ${loja} para voltar a receber corridas.`
-            : `Seu cadastro foi para ${loja}. Assim que aprovarem, as corridas aparecem aqui.`}
+            ? `Fale com ${quemAprova} para voltar a receber corridas.`
+            : eu?.status === "rejected"
+              ? "Corrija o que foi pedido e envie de novo."
+              : `Seu cadastro foi para ${quemAprova}. Assim que aprovarem, as corridas aparecem aqui.`}
         </p>
+        {eu?.review_note && eu.status !== "pending" ? (
+          <p className="mt-3 rounded-lg bg-muted p-3 text-sm">{eu.review_note}</p>
+        ) : null}
+        {eu?.status === "rejected" && !eu.restaurants ? (
+          <Link
+            href="/entregas/cadastro"
+            className="mt-4 inline-flex h-10 items-center rounded-lg bg-marca px-5 text-sm font-semibold text-white hover:bg-marca-forte"
+          >
+            Corrigir cadastro
+          </Link>
+        ) : null}
       </div>
     )
   }

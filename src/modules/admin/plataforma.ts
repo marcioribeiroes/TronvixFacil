@@ -264,9 +264,17 @@ export async function removerBanner(id: string): Promise<ResultadoDaAcao> {
 export async function decidirSobreEntregador(
   id: string,
   situacao: Enums<"courier_status">,
+  motivo?: string,
 ): Promise<ResultadoDaAcao> {
   const admin = await exigirAdminDaPlataforma()
   const supabase = await criarClienteDoServidor()
+
+  // Recusa e suspensao dizem por que: o motoboy le isto no aplicativo, e "nao"
+  // sem motivo e o que faz alguem reenviar a mesma foto ilegivel tres vezes.
+  const nota = motivo?.trim().slice(0, 500) || null
+  if ((situacao === "rejected" || situacao === "suspended") && !nota) {
+    return { ok: false, erro: "Diga o motivo: o entregador vai ler." }
+  }
 
   const { error } = await supabase
     .from("couriers")
@@ -279,6 +287,7 @@ export async function decidirSobreEntregador(
       // Suspenso nao pode continuar marcado como disponivel, senao a fila
       // tentaria despachar para ele.
       availability: situacao === "approved" ? undefined : "offline",
+      review_note: situacao === "approved" ? null : nota,
     })
     .eq("id", id)
 

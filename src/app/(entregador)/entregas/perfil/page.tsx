@@ -18,7 +18,8 @@ export const metadata: Metadata = { title: "Perfil" }
 const SITUACAO: Record<string, string> = {
   pending: "Esperando aprovação",
   approved: "Aprovado",
-  suspended: "Fora",
+  suspended: "Suspenso",
+  rejected: "Recusado",
 }
 
 const VEICULO: Record<string, string> = {

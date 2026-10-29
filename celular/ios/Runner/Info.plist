@@ -70,7 +70,9 @@
 	     o texto aparece no alerta, para o cliente, no momento em que ele
 	     aponta o celular para a mesa. -->
 	<key>NSCameraUsageDescription</key>
-	<string>Para ler o QR Code da mesa e você pedir pelo próprio celular.</string>
+	<string>Para ler o QR Code da mesa e, se você se cadastrar como entregador, fotografar seus documentos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Para escolher as fotos dos documentos no cadastro de entregador.</string>
 	<!-- So HTTPS do proprio sistema: criptografia isenta. Sem esta chave, a
 	     Apple segura cada build no TestFlight ate alguem responder a pergunta. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
