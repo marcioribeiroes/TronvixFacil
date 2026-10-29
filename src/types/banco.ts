@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 38   Enums: 15   Funcoes: 34
+// Tabelas: 41   Enums: 15   Funcoes: 36
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -917,6 +917,125 @@ export interface Database {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      kitchen_prep_counters: {
+        Row: {
+          restaurant_id: string
+          last_number: number
+        }
+        Insert: {
+          restaurant_id: string
+          last_number?: number
+        }
+        Update: {
+          restaurant_id?: string
+          last_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_prep_counters_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      kitchen_prep_ingredients: {
+        Row: {
+          id: string
+          prep_id: string
+          name: string
+          quantity: number | null
+          unit: string | null
+          position: number
+        }
+        Insert: {
+          id?: string
+          prep_id: string
+          name: string
+          quantity?: number | null
+          unit?: string | null
+          position?: number
+        }
+        Update: {
+          id?: string
+          prep_id?: string
+          name?: string
+          quantity?: number | null
+          unit?: string | null
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_prep_ingredients_prep_id_fkey"
+            columns: ["prep_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_preps"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      kitchen_preps: {
+        Row: {
+          id: string
+          restaurant_id: string
+          number: number
+          prep_date: string
+          name: string
+          product_id: string | null
+          product_name: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          number: number
+          prep_date: string
+          name: string
+          product_id?: string | null
+          product_name: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          number?: number
+          prep_date?: string
+          name?: string
+          product_id?: string | null
+          product_name?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kitchen_preps_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_preps_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kitchen_preps_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           }
         ]
@@ -2154,6 +2273,18 @@ export interface Database {
         }
         Returns: { restaurant_id: string; pratos: string[] }[]
       }
+      buscar_preparos: {
+        Args: {
+          p_restaurante: string
+          p_de?: string
+          p_ate?: string
+          p_numero?: number
+          p_preparo?: string
+          p_prato?: string
+          p_ingrediente?: string
+        }
+        Returns: unknown[]
+      }
       cadastrar_estabelecimento: {
         Args: {
           p_nome: string
@@ -2267,6 +2398,17 @@ export interface Database {
           p_dados: Json
         }
         Returns: string
+      }
+      lancar_preparo: {
+        Args: {
+          p_restaurante: string
+          p_data: string
+          p_nome: string
+          p_prato: string
+          p_ingredientes: Json
+          p_observacao?: string
+        }
+        Returns: number
       }
       lojas_para_o_endereco: {
         Args: {

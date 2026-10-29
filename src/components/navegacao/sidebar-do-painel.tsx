@@ -8,6 +8,7 @@ import {
   Boxes,
   Building2,
   Bug,
+  ChefHat,
   ClipboardList,
   DollarSign,
   Image as ImageIcon,
@@ -64,6 +65,7 @@ const ICONES = {
   adicionais: PlusSquare,
   mesas: QrCode,
   caixa: Wallet,
+  cozinha: ChefHat,
   erros: Bug,
 } as const satisfies Record<string, LucideIcon>
 
