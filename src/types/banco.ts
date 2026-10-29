@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 44   Enums: 15   Funcoes: 42
+// Tabelas: 45   Enums: 15   Funcoes: 42
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -696,6 +696,24 @@ export interface Database {
           }
         ]
       }
+      courier_vehicle_rules: {
+        Row: {
+          vehicle_type: string
+          max_trip_km: number | null
+          max_pickup_km: number | null
+        }
+        Insert: {
+          vehicle_type: string
+          max_trip_km?: number | null
+          max_pickup_km?: number | null
+        }
+        Update: {
+          vehicle_type?: string
+          max_trip_km?: number | null
+          max_pickup_km?: number | null
+        }
+        Relationships: []
+      }
       couriers: {
         Row: {
           id: string
@@ -832,6 +850,7 @@ export interface Database {
           cancelled_at: string | null
           created_at: string
           updated_at: string
+          searching_since: string | null
         }
         Insert: {
           id?: string
@@ -847,6 +866,7 @@ export interface Database {
           cancelled_at?: string | null
           created_at?: string
           updated_at?: string
+          searching_since?: string | null
         }
         Update: {
           id?: string
@@ -862,6 +882,7 @@ export interface Database {
           cancelled_at?: string | null
           created_at?: string
           updated_at?: string
+          searching_since?: string | null
         }
         Relationships: [
           {
@@ -1675,6 +1696,7 @@ export interface Database {
           allow_new_signups: boolean
           maintenance_mode: boolean
           updated_at: string
+          platform_courier_delay_minutes: number
         }
         Insert: {
           id?: boolean
@@ -1687,6 +1709,7 @@ export interface Database {
           allow_new_signups?: boolean
           maintenance_mode?: boolean
           updated_at?: string
+          platform_courier_delay_minutes?: number
         }
         Update: {
           id?: boolean
@@ -1699,6 +1722,7 @@ export interface Database {
           allow_new_signups?: boolean
           maintenance_mode?: boolean
           updated_at?: string
+          platform_courier_delay_minutes?: number
         }
         Relationships: []
       }

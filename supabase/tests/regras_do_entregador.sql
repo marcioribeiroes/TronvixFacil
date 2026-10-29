@@ -124,11 +124,18 @@ begin
 end;
 $$;
 
--- Ligar a chave abre a corrida ao autonomo — e so por isso.
+-- Ligar a chave abre a corrida ao autonomo — e so por isso. Os limites de
+-- distancia e a espera tem teste proprio (regras_da_corrida_por_proximidade);
+-- aqui o autonomo esta perto, a corrida e curta e a espera ja passou.
 do $$
 begin
-  update restaurants set accepts_platform_couriers = true
+  update restaurants set accepts_platform_couriers = true,
+                         latitude = -20.8489, longitude = -41.1129
    where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  update couriers set current_latitude = -20.8500, current_longitude = -41.1140,
+                      location_updated_at = now()
+   where id = '77777777-0000-0000-0000-000000000003';
+  update deliveries set distance_km = 3, searching_since = now() - interval '10 minutes';
 
   perform pg_temp.conferir(
     pg_temp.visiveis('66666666-6666-6666-6666-666666666666', 'deliveries') = 1,

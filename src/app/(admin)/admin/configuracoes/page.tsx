@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { ConfiguracoesDaPlataforma } from "@/components/admin/configuracoes-da-plataforma"
+import { LimitesDosEntregadores } from "@/components/admin/limites-dos-entregadores"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirAdminDaPlataforma } from "@/modules/auth/sessao"
 
@@ -18,12 +19,15 @@ export default async function PaginaDeConfiguracoes() {
   await exigirAdminDaPlataforma()
   const supabase = await criarClienteDoServidor()
 
-  const { data: configuracao } = await supabase
-    .from("platform_settings")
-    .select(
-      "brand_name, support_email, support_phone, default_commission_bps, default_courier_fee_cents, min_order_cents, allow_new_signups, maintenance_mode",
-    )
-    .maybeSingle()
+  const [{ data: configuracao }, { data: limites }] = await Promise.all([
+    supabase
+      .from("platform_settings")
+      .select(
+        "brand_name, support_email, support_phone, default_commission_bps, default_courier_fee_cents, min_order_cents, allow_new_signups, maintenance_mode, platform_courier_delay_minutes",
+      )
+      .maybeSingle(),
+    supabase.from("courier_vehicle_rules").select("vehicle_type, max_trip_km, max_pickup_km"),
+  ])
 
   return (
     <div className="space-y-6">
@@ -35,7 +39,17 @@ export default async function PaginaDeConfiguracoes() {
       </div>
 
       {configuracao ? (
-        <ConfiguracoesDaPlataforma configuracao={configuracao} />
+        <>
+          <ConfiguracoesDaPlataforma configuracao={configuracao} />
+          <LimitesDosEntregadores
+            espera={configuracao.platform_courier_delay_minutes}
+            limites={(limites ?? []).map((l) => ({
+              veiculo: l.vehicle_type,
+              viagemKm: l.max_trip_km === null ? "" : String(l.max_trip_km).replace(".", ","),
+              buscaKm: l.max_pickup_km === null ? "" : String(l.max_pickup_km).replace(".", ","),
+            }))}
+          />
+        </>
       ) : (
         <div className="rounded-xl border border-dashed p-10 text-center">
           <p className="font-semibold">A configuração da plataforma não existe no banco</p>

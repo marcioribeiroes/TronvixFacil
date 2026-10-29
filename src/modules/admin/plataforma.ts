@@ -360,3 +360,54 @@ export async function salvarConfiguracaoDaPlataforma(dados: {
   recarregar("/admin/configuracoes", "/admin", "/")
   return { ok: true }
 }
+
+// ---------------------------------------------------------------------------
+// Corrida por proximidade
+// ---------------------------------------------------------------------------
+
+/**
+ * Os limites de distancia por veiculo e a espera antes de abrir a corrida aos
+ * autonomos. Quem aplica e o banco (`app.corrida_oferecida_a_mim`); aqui so se
+ * grava. Campo vazio e "sem limite".
+ */
+export async function salvarLimitesDosEntregadores(dados: {
+  esperaEmMinutos: string
+  limites: { veiculo: string; viagemKm: string; buscaKm: string }[]
+}): Promise<ResultadoDaAcao> {
+  await exigirAdminDaPlataforma()
+  const supabase = await criarClienteDoServidor()
+
+  const espera = Number(dados.esperaEmMinutos)
+  if (!Number.isInteger(espera) || espera < 0 || espera > 60) {
+    return { ok: false, erro: "A espera vai de 0 a 60 minutos.", campo: "espera" }
+  }
+
+  const km = (texto: string) => {
+    const t = texto.trim().replace(",", ".")
+    if (t === "") return null
+    const n = Number(t)
+    return Number.isFinite(n) && n > 0 && n <= 1000 ? n : Number.NaN
+  }
+
+  for (const l of dados.limites) {
+    const viagem = km(l.viagemKm)
+    const busca = km(l.buscaKm)
+    if (Number.isNaN(viagem) || Number.isNaN(busca)) {
+      return { ok: false, erro: "Use quilômetros maiores que zero, ou deixe vazio para sem limite." }
+    }
+    const { error } = await supabase
+      .from("courier_vehicle_rules")
+      .update({ max_trip_km: viagem, max_pickup_km: busca })
+      .eq("vehicle_type", l.veiculo)
+    if (error) return { ok: false, erro: error.message }
+  }
+
+  const { error } = await supabase
+    .from("platform_settings")
+    .update({ platform_courier_delay_minutes: espera })
+    .eq("id", true)
+  if (error) return { ok: false, erro: error.message }
+
+  recarregar("/admin/configuracoes")
+  return { ok: true }
+}

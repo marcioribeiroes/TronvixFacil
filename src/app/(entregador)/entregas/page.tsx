@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 
+import { SinalDoAutonomo } from "@/components/entregador/sinal-do-autonomo"
 import {
   CorridasDoEntregador,
   type CorridaNaTela,
@@ -51,7 +52,7 @@ export default async function CorridasDisponiveis() {
         .order("created_at"),
       supabase
         .from("couriers")
-        .select("status, availability, review_note, restaurants(name)")
+        .select("status, availability, review_note, restaurant_id, restaurants(name)")
         .eq("id", entregadorId)
         .single(),
       supabase
@@ -134,13 +135,24 @@ export default async function CorridasDisponiveis() {
     )
   }
 
+  const online = eu?.availability === "online" || eu?.availability === "on_delivery"
+  const corridaEmCurso = Boolean(minha && minha.length > 0)
+
   return (
-    <CorridasDoEntregador
-      minhaCorrida={minha && minha.length > 0 ? paraTela(minha[0]) : null}
-      fila={(fila ?? []).map(paraTela)}
-      online={eu?.availability === "online" || eu?.availability === "on_delivery"}
-      entreguesHoje={(entreguesHoje ?? []).length}
-      ganhoDeHoje={(entreguesHoje ?? []).reduce((s, d) => s + d.courier_fee_cents, 0)}
-    />
+    <>
+      {/* So o autonomo disponivel e sem corrida: a posicao dele e o que traz
+          corrida por perto. O do estabelecimento nao precisa - e o rastro da
+          corrida em curso ja tem o caminho dele. */}
+      {eu?.restaurant_id === null && eu.availability === "online" && !corridaEmCurso ? (
+        <SinalDoAutonomo />
+      ) : null}
+      <CorridasDoEntregador
+        minhaCorrida={minha && minha.length > 0 ? paraTela(minha[0]) : null}
+        fila={(fila ?? []).map(paraTela)}
+        online={online}
+        entreguesHoje={(entreguesHoje ?? []).length}
+        ganhoDeHoje={(entreguesHoje ?? []).reduce((s, d) => s + d.courier_fee_cents, 0)}
+      />
+    </>
   )
 }

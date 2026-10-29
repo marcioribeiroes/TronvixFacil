@@ -38,6 +38,7 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
   Ponto? _eu;
   RealtimeChannel? _canal;
   StreamSubscription<Ponto>? _rastro;
+  Timer? _relogio;
   bool _carregando = true;
   Object? _erro;
 
@@ -49,6 +50,9 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
     _carregar();
     _localizar();
     _canal = Corridas.acompanharFila(_carregar);
+    // Ligar e desligar o "disponível" muda a sessão, não esta tela: é por ela
+    // que o relógio do autônomo fica sabendo.
+    Sessao.instancia.addListener(_ajustarRelogio);
   }
 
   @override
@@ -56,6 +60,8 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
     final canal = _canal;
     if (canal != null) banco.removeChannel(canal);
     _rastro?.cancel();
+    _relogio?.cancel();
+    Sessao.instancia.removeListener(_ajustarRelogio);
     super.dispose();
   }
 
@@ -81,6 +87,45 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
     });
   }
 
+  /// O autônomo disponível, e só ele, dá sinal de vida a cada 45 segundos.
+  ///
+  /// A corrida chega a ele pela distância (`app.corrida_oferecida_a_mim`):
+  /// sem posição recente, nada aparece. E a fila não avisa sozinha quando a
+  /// espera da loja termina — nenhuma linha muda nessa hora —, então o mesmo
+  /// relógio relê a fila.
+  ///
+  /// Continua valendo o que o rastro diz: fora do "disponível" o aplicativo
+  /// não acompanha ninguém. Quem está disponível pediu para receber corrida
+  /// por perto, e perto exige saber onde.
+  void _ajustarRelogio() {
+    final eu = _eu_;
+    final esperando = eu != null &&
+        eu.autonomo &&
+        eu.podeTrabalhar &&
+        eu.disponibilidade == DisponibilidadeDoEntregador.online &&
+        _minha == null;
+
+    if (!esperando) {
+      _relogio?.cancel();
+      _relogio = null;
+      return;
+    }
+    if (_relogio != null) return;
+
+    _relogio =
+        Timer.periodic(const Duration(seconds: 45), (_) => _darSinal());
+    _darSinal();
+  }
+
+  Future<void> _darSinal() async {
+    final onde = await Localizacao.onde();
+    if (onde != null) {
+      await Corridas.publicarPosicao(onde);
+      if (mounted) setState(() => _eu = onde);
+    }
+    await _carregar();
+  }
+
   Future<void> _localizar() async {
     final onde = await Localizacao.onde();
     if (mounted && onde != null) setState(() => _eu = onde);
@@ -102,6 +147,7 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
         _erro = null;
       });
       _ajustarRastro();
+      _ajustarRelogio();
     } catch (e) {
       if (!mounted) return;
       setState(() {

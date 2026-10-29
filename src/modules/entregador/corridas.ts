@@ -125,3 +125,25 @@ export async function mudarDisponibilidade(online: boolean): Promise<ResultadoDa
   revalidatePath("/entregas")
   return { ok: true }
 }
+
+/**
+ * A posicao do autonomo disponivel. A corrida chega a ele pela distancia
+ * (`app.corrida_oferecida_a_mim`), e sem posicao recente nada aparece.
+ */
+export async function publicarPosicao(
+  latitude: number,
+  longitude: number,
+): Promise<ResultadoDaAcao> {
+  await exigirEntregador()
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return { ok: false, erro: "Posição inválida." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("publicar_posicao", {
+    p_latitude: latitude,
+    p_longitude: longitude,
+  })
+  if (error) return { ok: false, erro: error.message }
+  return { ok: true }
+}
