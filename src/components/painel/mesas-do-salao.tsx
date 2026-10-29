@@ -5,6 +5,7 @@ import { Check, Pencil, Plus, Power, Printer, Trash2, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { formatarReais } from "@/lib/dinheiro"
 import { criarMesas, mudarUsoDaMesa, removerMesa, renomearMesa } from "@/modules/painel/mesas"
 
 /**
@@ -23,6 +24,31 @@ export type MesaNaTela = {
   emUso: boolean
   pedidosAbertos: number
   contaAbertaCentavos: number
+}
+
+/**
+ * A situacao da mesa vira a cor do cartao, para o salao inteiro ser lido de
+ * longe: verde esta livre, laranja tem conta aberta, preto esta fora de uso.
+ * Mesa fora de uso com pedido antigo ainda aberto fica laranja - a conta vem
+ * antes, e e ela que alguem precisa fechar.
+ */
+type Situacao = "livre" | "ocupada" | "fora"
+
+function situacao(m: MesaNaTela): Situacao {
+  if (m.pedidosAbertos > 0) return "ocupada"
+  return m.emUso ? "livre" : "fora"
+}
+
+const COR: Record<Situacao, string> = {
+  livre: "bg-emerald-600",
+  ocupada: "bg-orange-500",
+  fora: "bg-zinc-900 dark:bg-zinc-800",
+}
+
+const ROTULO: Record<Situacao, string> = {
+  livre: "Livre",
+  ocupada: "Ocupada",
+  fora: "Fora de uso",
 }
 
 export function MesasDoSalao({
@@ -112,86 +138,112 @@ export function MesasDoSalao({
             </a>
           </div>
 
-          <ul className="divide-y rounded-xl border bg-card">
-            {mesas.map((m) => (
-              <li key={m.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-                {editando === m.id ? (
-                  <>
-                    <Input
-                      autoFocus
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && rodar(() => renomearMesa(m.id, nome))}
-                      className="max-w-48"
-                    />
-                    <Button
-                      size="sm"
-                      disabled={enviando}
-                      onClick={() => rodar(() => renomearMesa(m.id, nome))}
-                    >
-                      <Check className="size-4" aria-hidden="true" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditando(null)}>
-                      <X className="size-4" aria-hidden="true" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold">{m.rotulo}</span>
-                      <span className="block font-mono text-[11px] text-muted-foreground">
-                        {enderecoDoSite.replace(/^https?:\/\//, "")}/m/{m.codigo}
-                      </span>
-                    </span>
-
-                    {m.pedidosAbertos > 0 ? (
-                      <span className="shrink-0 rounded-md bg-marca/10 px-2 py-1 text-xs font-semibold text-marca">
-                        {m.pedidosAbertos} em aberto ·{" "}
-                        {(m.contaAbertaCentavos / 100).toFixed(2).replace(".", ",")}
-                      </span>
-                    ) : null}
-
-                    {!m.emUso ? (
-                      <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
-                        fora de uso
-                      </span>
-                    ) : null}
-
-                    <div className="flex shrink-0 gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Renomear ${m.rotulo}`}
-                        onClick={() => {
-                          setEditando(m.id)
-                          setNome(m.rotulo)
-                        }}
-                      >
-                        <Pencil className="size-4" aria-hidden="true" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={m.emUso ? `Tirar ${m.rotulo} de uso` : `Pôr ${m.rotulo} em uso`}
-                        disabled={enviando}
-                        onClick={() => rodar(() => mudarUsoDaMesa(m.id, !m.emUso))}
-                      >
-                        <Power className={`size-4 ${m.emUso ? "" : "text-muted-foreground"}`} aria-hidden="true" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Remover ${m.rotulo}`}
-                        disabled={enviando}
-                        onClick={() => rodar(() => removerMesa(m.id))}
-                      >
-                        <Trash2 className="size-4 text-destructive" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </>
-                )}
+          <ul aria-label="Legenda" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {(["livre", "ocupada", "fora"] as const).map((s) => (
+              <li key={s} className="inline-flex items-center gap-1.5">
+                <span className={`size-3 rounded-sm ${COR[s]}`} aria-hidden="true" />
+                {ROTULO[s]}
               </li>
             ))}
+          </ul>
+
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+            {mesas.map((m) => {
+              const s = situacao(m)
+              return (
+                <li
+                  key={m.id}
+                  className={`flex aspect-square flex-col rounded-xl p-3 text-white shadow-sm ${COR[s]}`}
+                >
+                  {editando === m.id ? (
+                    <div className="flex flex-1 flex-col justify-center gap-2">
+                      <Input
+                        autoFocus
+                        aria-label="Novo nome da mesa"
+                        value={nome}
+                        onChange={(e) => setNome(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && rodar(() => renomearMesa(m.id, nome))}
+                        className="bg-white text-foreground"
+                      />
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label="Salvar o nome"
+                          disabled={enviando}
+                          onClick={() => rodar(() => renomearMesa(m.id, nome))}
+                        >
+                          <Check className="size-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          aria-label="Cancelar"
+                          onClick={() => setEditando(null)}
+                        >
+                          <X className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                        {ROTULO[s]}
+                      </p>
+                      <div className="flex flex-1 flex-col items-center justify-center text-center">
+                        <p className="text-xl font-bold leading-tight break-words">{m.rotulo}</p>
+                        {m.pedidosAbertos > 0 ? (
+                          <p className="mt-1 text-sm font-semibold">
+                            {m.pedidosAbertos} {m.pedidosAbertos === 1 ? "pedido" : "pedidos"} ·{" "}
+                            {formatarReais(m.contaAbertaCentavos)}
+                          </p>
+                        ) : null}
+                        <p
+                          className="mt-1 font-mono text-[10px] text-white/70"
+                          title={`${enderecoDoSite}/m/${m.codigo}`}
+                        >
+                          /m/{m.codigo}
+                        </p>
+                      </div>
+                      <div className="flex justify-center gap-0.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-white/15 hover:text-white"
+                          aria-label={`Renomear ${m.rotulo}`}
+                          onClick={() => {
+                            setEditando(m.id)
+                            setNome(m.rotulo)
+                          }}
+                        >
+                          <Pencil className="size-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-white/15 hover:text-white"
+                          aria-label={m.emUso ? `Tirar ${m.rotulo} de uso` : `Pôr ${m.rotulo} em uso`}
+                          disabled={enviando}
+                          onClick={() => rodar(() => mudarUsoDaMesa(m.id, !m.emUso))}
+                        >
+                          <Power className="size-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-white hover:bg-white/15 hover:text-white"
+                          aria-label={`Remover ${m.rotulo}`}
+                          disabled={enviando}
+                          onClick={() => rodar(() => removerMesa(m.id))}
+                        >
+                          <Trash2 className="size-4" aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </>
       )}
