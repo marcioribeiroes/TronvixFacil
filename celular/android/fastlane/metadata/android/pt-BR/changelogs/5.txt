@@ -1,0 +1,2 @@
+- Quero entregar: o entregador se cadastra pela Conta e escolhe para qual estabelecimento vai trabalhar
+- Pedido aceito pode ser marcado como pronto direto, sem passar pelo preparo
