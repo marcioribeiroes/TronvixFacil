@@ -77,6 +77,19 @@ function minutosDesde(iso: string) {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
 }
 
+/** Dia e hora em que o pedido foi lancado: "29/10 14:32". */
+function lancadoEm(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    // O servidor roda em UTC; a loja, nao. Sem o fuso, a hora renderizada no
+    // servidor e a do navegador nao batem.
+    timeZone: "America/Sao_Paulo",
+  })
+}
+
 /**
  * A previsao em palavras, do jeito que o balcao fala.
  *
@@ -363,7 +376,7 @@ export function FilaDePedidos({
 const COLUNAS = [
   {
     chave: "recebido",
-    titulo: "Chegou",
+    titulo: "Pedidos recebidos",
     detalhe: "esperando você aceitar",
     situacoes: ["awaiting_payment", "received"] as SituacaoDoPedido[],
     urgente: true,
@@ -563,11 +576,11 @@ function CartaoDoPedido({
     return String(Math.max(5, restante))
   })
 
-  function avancar() {
-    if (!destino) return
+  function avancar(para = destino) {
+    if (!para) return
     setErro(null)
     iniciar(async () => {
-      const r = await avancarPedido(p.id, destino)
+      const r = await avancarPedido(p.id, para)
       if (!r.ok) setErro(r.erro)
     })
   }
@@ -601,6 +614,8 @@ function CartaoDoPedido({
         <span
           className={`ml-auto text-sm ${atrasado ? "font-bold text-destructive" : "text-muted-foreground"}`}
         >
+          <time dateTime={p.created_at}>{lancadoEm(p.created_at)}</time>
+          {" · "}
           {espera === 0 ? "agora" : `há ${espera} min`}
         </span>
       </header>
@@ -718,7 +733,7 @@ function CartaoDoPedido({
           )}
         </span>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {/* Reimprimir. Comanda cai atrás do balcão, papel acaba no meio, o
               garçom leva a errada — e a fila não pode depender de ninguém ter
               guardado o papel. */}
@@ -750,11 +765,24 @@ function CartaoDoPedido({
               Recusar
             </Button>
           ) : null}
+          {/* O atalho para o que não vai ao fogo: bebida, doce da vitrine,
+              lanche já montado. "Iniciar preparo" continua sendo o passo
+              principal; este pula direto para o pronto. */}
+          {situacao === "confirmed" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => avancar("ready")}
+              disabled={enviando}
+            >
+              {ACAO_DA_SITUACAO.ready}
+            </Button>
+          ) : null}
           {/* Sem "Confirmar pedido" enquanto o Pix não cai: quem solta o pedido
               é o botão de recebimento, e ter dois caminhos para a cozinha seria
               o caminho de mandar comida que ninguém pagou. */}
           {destino && !esperandoPix ? (
-            <Button size="sm" onClick={avancar} disabled={enviando}>
+            <Button size="sm" onClick={() => avancar()} disabled={enviando}>
               {ACAO_DA_SITUACAO[destino]}
             </Button>
           ) : null}

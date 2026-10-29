@@ -125,7 +125,7 @@ export function PixDaLoja({
 
       <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/30">
         <strong>A confirmação é sua.</strong> O pedido pago por Pix fica na coluna{" "}
-        <em>Chegou</em>, marcado como “aguardando Pix”. Quando o dinheiro entrar na sua conta,
+        <em>Pedidos recebidos</em>, marcado como “aguardando Pix”. Quando o dinheiro entrar na sua conta,
         toque em <em>Recebi o Pix</em> e ele vai para a cozinha. Enquanto não confirmar, a
         cozinha não começa — é a proteção contra o pedido que ninguém pagou.
       </div>

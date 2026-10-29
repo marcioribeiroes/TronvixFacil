@@ -200,8 +200,13 @@ values ('dddddddd-0000-0000-0000-000000000004',
         2000, 0, 2000);
 
 update orders set status = 'confirmed' where id = 'dddddddd-0000-0000-0000-000000000004';
-update orders set status = 'preparing' where id = 'dddddddd-0000-0000-0000-000000000004';
+-- Sem passar pelo preparo: o que nao vai ao fogo fica pronto direto do aceito.
 update orders set status = 'ready'     where id = 'dddddddd-0000-0000-0000-000000000004';
+
+select pg_temp.conferir(
+  (select status = 'ready' and ready_at is not null
+   from orders where id = 'dddddddd-0000-0000-0000-000000000004'),
+  'pronto direto de "aceito", sem passar pelo preparo');
 
 select pg_temp.deve_falhar($$
   update orders set status = 'out_for_delivery'

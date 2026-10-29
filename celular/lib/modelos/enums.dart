@@ -131,6 +131,7 @@ const Map<StatusDoPedido, List<StatusDoPedido>> transicoesPermitidas = {
   ],
   StatusDoPedido.confirmado: [
     StatusDoPedido.emPreparo,
+    StatusDoPedido.pronto,
     StatusDoPedido.cancelado,
   ],
   StatusDoPedido.emPreparo: [StatusDoPedido.pronto, StatusDoPedido.cancelado],

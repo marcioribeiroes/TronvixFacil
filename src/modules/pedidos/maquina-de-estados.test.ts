@@ -33,6 +33,12 @@ describe("maquina de estados do pedido", () => {
     }
   })
 
+  it("deixa marcar como pronto direto do aceito", () => {
+    expect(transicaoDoPedidoPermitida("confirmed", "ready")).toBe(true)
+    // E o passo padrao continua sendo o preparo.
+    expect(proximasSituacoesDoPedido("confirmed")[0]).toBe("preparing")
+  })
+
   it("recusa pular etapas", () => {
     expect(transicaoDoPedidoPermitida("received", "delivered")).toBe(false)
     expect(transicaoDoPedidoPermitida("received", "ready")).toBe(false)

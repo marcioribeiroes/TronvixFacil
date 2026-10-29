@@ -65,7 +65,9 @@ export const ROTULO_DO_TIPO: Record<TipoDeEntrega, string> = {
 const TRANSICOES_DO_PEDIDO: Record<SituacaoDoPedido, readonly SituacaoDoPedido[]> = {
   awaiting_payment: ["received", "cancelled"],
   received: ["confirmed", "rejected", "cancelled"],
-  confirmed: ["preparing", "cancelled"],
+  // "Pronto" direto: o pedido que nao precisa de preparo. "preparing" vem
+  // primeiro porque e o proximo passo que o quadro oferece por padrao.
+  confirmed: ["preparing", "ready", "cancelled"],
   preparing: ["ready", "cancelled"],
   // De "pronto" o caminho depende do tipo: entrega vai para a rua, retirada
   // se conclui no balcao. A checagem do tipo fica em transicaoDoPedidoPermitida.

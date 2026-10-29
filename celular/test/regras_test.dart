@@ -192,6 +192,12 @@ void main() {
           isTrue);
     });
 
+    test('pronto direto do aceito, para o que não vai ao fogo', () {
+      expect(
+          transicaoPermitida(StatusDoPedido.confirmado, StatusDoPedido.pronto),
+          isTrue);
+    });
+
     test('não se pula etapa', () {
       expect(
           transicaoPermitida(StatusDoPedido.recebido, StatusDoPedido.entregue),
