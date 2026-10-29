@@ -81,9 +81,9 @@ export default async function PaginaDaCozinha({ searchParams }: PageProps<"/pain
   const preparos = (encontrados ?? []) as Preparo[]
   const ids = preparos.map((p) => p.id)
 
-  // Os ingredientes dos preparos da tela, e os nomes ja usados - que viram a
-  // sugestao do formulario, para "Tomate" nao virar "tomate" e "Tomates".
-  const [{ data: ingredientes }, { data: usados }] = await Promise.all([
+  // Os ingredientes dos preparos da tela, e o cadastro do estoque - que vira a
+  // sugestao do formulario, com a unidade de cada um.
+  const [{ data: ingredientes }, { data: doEstoque }] = await Promise.all([
     ids.length > 0
       ? supabase
           .from("kitchen_prep_ingredients")
@@ -92,10 +92,11 @@ export default async function PaginaDaCozinha({ searchParams }: PageProps<"/pain
           .order("position")
       : Promise.resolve({ data: [] as never[] }),
     supabase
-      .from("kitchen_prep_ingredients")
-      .select("name, kitchen_preps!inner(restaurant_id)")
-      .eq("kitchen_preps.restaurant_id", vinculo.restauranteId)
-      .limit(1000),
+      .from("ingredients")
+      .select("name, unit")
+      .eq("restaurant_id", vinculo.restauranteId)
+      .is("deleted_at", null)
+      .order("name"),
   ])
 
   const porPreparo = new Map<string, NonNullable<typeof ingredientes>>()
@@ -103,9 +104,6 @@ export default async function PaginaDaCozinha({ searchParams }: PageProps<"/pain
     porPreparo.set(i.prep_id, [...(porPreparo.get(i.prep_id) ?? []), i])
   }
 
-  const conhecidos = [...new Set((usados ?? []).map((u) => u.name))].sort((a, b) =>
-    a.localeCompare(b, "pt-BR"),
-  )
 
   const hoje = new Date().toLocaleDateString("en-CA", {
     timeZone: loja?.timezone ?? "America/Sao_Paulo",
@@ -123,7 +121,7 @@ export default async function PaginaDaCozinha({ searchParams }: PageProps<"/pain
       <LancarPreparo
         hoje={hoje}
         pratos={[...new Set((produtos ?? []).map((p) => p.name))]}
-        ingredientesConhecidos={conhecidos}
+        ingredientes={(doEstoque ?? []).map((i) => ({ nome: i.name, unidade: i.unit }))}
       />
 
       <section className="space-y-4">

@@ -56,6 +56,13 @@ insert into products (id, restaurant_id, category_id, name, price_cents) values
   ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
    'cccccccc-0000-0000-0000-000000000001', 'Filé à Parmegiana', 4500);
 
+-- O preparo usa o que esta cadastrado no estoque de ingredientes.
+insert into ingredients (restaurant_id, name, unit) values
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Tomate', 'kg'),
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Cebola', 'kg'),
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Sal', 'g'),
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'Batata', 'kg');
+
 -- -----------------------------------------------------------------------------
 -- O lancamento
 -- -----------------------------------------------------------------------------
@@ -73,7 +80,7 @@ begin
     'file a parmegiana',
     '[{"nome": "Tomate", "quantidade": 2.5, "unidade": "kg"},
       {"nome": "Cebola", "quantidade": "0.4", "unidade": "kg"},
-      {"nome": "Sal"}]',
+      {"nome": "sal", "quantidade": 20}]',
     'Lote 12');
 
   v_segundo := lancar_preparo(
@@ -96,10 +103,12 @@ begin
        from kitchen_preps where number = 2),
     'o prato fora do cardapio fica com o nome digitado');
   perform pg_temp.conferir(
-    (select count(*) = 3 and sum(quantity) = 2.9
+    (select count(*) = 3 and sum(i.quantity) = 22.9
+            and bool_and(i.ingredient_id is not null)
+            and count(*) filter (where i.name = 'Sal' and i.unit = 'g') = 1
        from kitchen_prep_ingredients i join kitchen_preps p on p.id = i.prep_id
       where p.number = 1),
-    'os ingredientes entram juntos, com quantidade opcional');
+    'os ingredientes entram ligados ao estoque, com o nome e a unidade do cadastro');
 end;
 $$;
 
@@ -108,7 +117,7 @@ begin
   perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
   perform pg_temp.deve_falhar(
     $q$select lancar_preparo('aaaaaaaa-0000-0000-0000-000000000001', current_date,
-       'Intruso', 'Prato', '[{"nome": "Sal"}]')$q$,
+       'Intruso', 'Prato', '[{"nome": "Sal", "quantidade": 1}]')$q$,
     'dono de outra loja lancando preparo aqui');
 
   perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
@@ -118,7 +127,7 @@ begin
     'preparo sem ingrediente');
   perform pg_temp.deve_falhar(
     $q$select lancar_preparo('aaaaaaaa-0000-0000-0000-000000000001', current_date,
-       'Molho', 'Prato', '[{"nome": "Tomate"}, {"nome": "  "}]')$q$,
+       'Molho', 'Prato', '[{"nome": "Tomate", "quantidade": 1}, {"nome": "  "}]')$q$,
     'ingrediente sem nome');
   perform pg_temp.deve_falhar(
     $q$select lancar_preparo('aaaaaaaa-0000-0000-0000-000000000001', current_date,
@@ -126,8 +135,16 @@ begin
     'quantidade negativa');
   perform pg_temp.deve_falhar(
     $q$select lancar_preparo('aaaaaaaa-0000-0000-0000-000000000001', current_date + 30,
-       'Molho', 'Prato', '[{"nome": "Tomate"}]')$q$,
+       'Molho', 'Prato', '[{"nome": "Tomate", "quantidade": 1}]')$q$,
     'data no futuro');
+  perform pg_temp.deve_falhar(
+    $q$select lancar_preparo('aaaaaaaa-0000-0000-0000-000000000001', current_date,
+       'Molho', 'Prato', '[{"nome": "Tomate"}]')$q$,
+    'ingrediente sem quantidade: sem ela nao ha saida do estoque');
+  perform pg_temp.deve_falhar(
+    $q$select lancar_preparo('aaaaaaaa-0000-0000-0000-000000000001', current_date,
+       'Molho', 'Prato', '[{"nome": "Manjericão", "quantidade": 1}]')$q$,
+    'ingrediente que nao esta cadastrado no estoque');
 
   perform pg_temp.conferir(
     (select count(*) = 2 from kitchen_preps),

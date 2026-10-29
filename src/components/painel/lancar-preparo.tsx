@@ -8,28 +8,36 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { lancarPreparo } from "@/modules/painel/cozinha"
 
+/** Sem acento e sem caixa, como o banco compara: "file" acha "Filé". */
+function normalizar(texto: string) {
+  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().toLowerCase()
+}
+
 /**
  * O lancamento de um preparo: data, o que foi feito, para qual prato e com o
  * que. O prato sugere os produtos do cardapio, mas aceita qualquer nome - o
  * molho base serve a tres pratos, e nem todo preparo tem produto proprio.
  *
- * Enter no ultimo ingrediente abre a linha seguinte: quem lanca esta lendo a
- * ficha da bancada, e nao quer tirar a mao do teclado a cada item.
+ * Os ingredientes sao os do estoque: o nome sugere o cadastro, a unidade vem
+ * dele, e a quantidade e obrigatoria - e ela que sai do estoque. Nome que nao
+ * esta no cadastro e recusado pelo banco, com o aviso de onde cadastrar.
+ *
+ * Enter na quantidade do ultimo ingrediente abre a linha seguinte: quem lanca
+ * esta lendo a ficha da bancada, e nao quer tirar a mao do teclado a cada item.
  */
 
-type Linha = { nome: string; quantidade: string; unidade: string }
+type Linha = { nome: string; quantidade: string }
 
-const LINHA_VAZIA: Linha = { nome: "", quantidade: "", unidade: "" }
-const UNIDADES = ["kg", "g", "L", "ml", "un", "cx", "pct", "colher", "xícara"]
+const LINHA_VAZIA: Linha = { nome: "", quantidade: "" }
 
 export function LancarPreparo({
   hoje,
   pratos,
-  ingredientesConhecidos,
+  ingredientes,
 }: {
   hoje: string
   pratos: string[]
-  ingredientesConhecidos: string[]
+  ingredientes: { nome: string; unidade: string }[]
 }) {
   const [enviando, iniciar] = useTransition()
   const [aviso, setAviso] = useState<{ tipo: "erro" | "ok"; texto: string } | null>(null)
@@ -39,6 +47,7 @@ export function LancarPreparo({
   const [prato, setPrato] = useState("")
   const [observacao, setObservacao] = useState("")
   const [linhas, setLinhas] = useState<Linha[]>([{ ...LINHA_VAZIA }])
+  const unidadeDe = new Map(ingredientes.map((i) => [normalizar(i.nome), i.unidade]))
 
   function mudar(indice: number, campo: keyof Linha, valor: string) {
     setLinhas((atuais) => atuais.map((l, i) => (i === indice ? { ...l, [campo]: valor } : l)))
@@ -115,25 +124,25 @@ export function LancarPreparo({
 
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-medium">Ingredientes</legend>
-        <datalist id="ingredientes-conhecidos">
-          {ingredientesConhecidos.map((i) => (
-            <option key={i} value={i} />
-          ))}
-        </datalist>
-        <datalist id="unidades">
-          {UNIDADES.map((u) => (
-            <option key={u} value={u} />
+        {ingredientes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhum ingrediente no estoque ainda. A gestão cadastra em Estoque → Ingredientes.
+          </p>
+        ) : null}
+        <datalist id="ingredientes-do-estoque">
+          {ingredientes.map((i) => (
+            <option key={i.nome} value={i.nome} />
           ))}
         </datalist>
 
         {linhas.map((linha, i) => (
-          <div key={i} className="grid grid-cols-[1fr_5.5rem_5rem_2.25rem] gap-2">
+          <div key={i} className="grid grid-cols-[1fr_5.5rem_2.5rem_2.25rem] items-center gap-2">
             <Input
               aria-label={`Ingrediente ${i + 1}`}
               value={linha.nome}
               onChange={(e) => mudar(i, "nome", e.target.value)}
               placeholder="Ingrediente"
-              list="ingredientes-conhecidos"
+              list="ingredientes-do-estoque"
             />
             <Input
               aria-label={`Quantidade do ingrediente ${i + 1}`}
@@ -141,13 +150,6 @@ export function LancarPreparo({
               onChange={(e) => mudar(i, "quantidade", e.target.value)}
               placeholder="Qtd."
               inputMode="decimal"
-            />
-            <Input
-              aria-label={`Unidade do ingrediente ${i + 1}`}
-              value={linha.unidade}
-              onChange={(e) => mudar(i, "unidade", e.target.value)}
-              placeholder="kg"
-              list="unidades"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && i === linhas.length - 1 && linha.nome.trim()) {
                   e.preventDefault()
@@ -155,6 +157,9 @@ export function LancarPreparo({
                 }
               }}
             />
+            <span className="text-sm text-muted-foreground">
+              {unidadeDe.get(normalizar(linha.nome)) ?? ""}
+            </span>
             <Button
               type="button"
               variant="ghost"

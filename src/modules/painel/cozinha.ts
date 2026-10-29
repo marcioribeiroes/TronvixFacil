@@ -11,15 +11,19 @@ import { exigirGestao, exigirVinculo } from "@/modules/auth/sessao"
  *
  * Lancar e da equipe toda - quem faz o molho e a cozinha, nao a gerencia - e
  * vai inteiro pelo banco, em `lancar_preparo`: o numero sai do contador da
- * loja e o preparo so existe com os ingredientes junto. Apagar e da gestao.
+ * loja, o preparo so existe com os ingredientes junto, e cada ingrediente sai
+ * do estoque na mesma transacao. Apagar e da gestao, e devolve ao estoque.
  */
 
-/** Aceita "2,5" e "2.5": quem digita na cozinha usa virgula. */
+/**
+ * Aceita "2,5" e "2.5": quem digita na cozinha usa virgula. Obrigatoria: e ela
+ * que vira a saida do estoque.
+ */
 const quantidade = z
   .string()
   .trim()
+  .min(1, "Informe a quantidade de cada ingrediente.")
   .transform((texto, ctx) => {
-    if (texto === "") return null
     const numero = Number(texto.replace(",", "."))
     if (!Number.isFinite(numero) || numero <= 0 || numero > 1_000_000) {
       ctx.addIssue({ code: "custom", message: `Quantidade inválida: ${texto}.` })
@@ -37,12 +41,12 @@ const schemaDoPreparo = z.object({
     .array(
       z.object({
         nome: z.string().trim().max(120),
-        quantidade,
-        unidade: z.string().trim().max(20),
+        quantidade: z.string(),
       }),
     )
     // Linha em branco e a que sobrou do Enter, nao um ingrediente sem nome.
-    .transform((lista) => lista.filter((i) => i.nome !== ""))
+    .transform((lista) => lista.filter((i) => i.nome.trim() !== ""))
+    .pipe(z.array(z.object({ nome: z.string().trim().max(120), quantidade })))
     .refine((lista) => lista.length > 0, "Informe ao menos um ingrediente.")
     .refine((lista) => lista.length <= 100, "No máximo 100 ingredientes por preparo."),
 })
@@ -65,11 +69,7 @@ export async function lancarPreparo(
     p_data: dados.data.data,
     p_nome: dados.data.nome,
     p_prato: dados.data.prato,
-    p_ingredientes: dados.data.ingredientes.map((i) => ({
-      nome: i.nome,
-      quantidade: i.quantidade,
-      unidade: i.unidade || null,
-    })),
+    p_ingredientes: dados.data.ingredientes,
     p_observacao: dados.data.observacao || undefined,
   })
   if (error || data === null) {
@@ -77,6 +77,7 @@ export async function lancarPreparo(
   }
 
   revalidatePath("/painel/cozinha")
+  revalidatePath("/painel/estoque")
   return { ok: true, numero: data }
 }
 
@@ -96,6 +97,8 @@ export async function apagarPreparo(
   if (error) return { ok: false, erro: error.message }
   if (!count) return { ok: false, erro: "Não achei esse preparo." }
 
+  // Apagar devolve ao estoque o que o preparo tirou (gatilho no banco).
   revalidatePath("/painel/cozinha")
+  revalidatePath("/painel/estoque")
   return { ok: true }
 }

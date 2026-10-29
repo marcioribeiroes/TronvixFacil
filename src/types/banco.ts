@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 41   Enums: 15   Funcoes: 36
+// Tabelas: 44   Enums: 15   Funcoes: 40
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -921,6 +921,128 @@ export interface Database {
           }
         ]
       }
+      ingredient_movements: {
+        Row: {
+          id: string
+          restaurant_id: string
+          ingredient_id: string
+          kind: string
+          source: string
+          quantity: number
+          balance_after: number
+          prep_id: string | null
+          order_id: string | null
+          reason: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          ingredient_id: string
+          kind: string
+          source: string
+          quantity: number
+          balance_after: number
+          prep_id?: string | null
+          order_id?: string | null
+          reason?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          ingredient_id?: string
+          kind?: string
+          source?: string
+          quantity?: number
+          balance_after?: number
+          prep_id?: string | null
+          order_id?: string | null
+          reason?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_movements_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_movements_prep_id_fkey"
+            columns: ["prep_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_preps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_movements_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      ingredients: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          unit: string
+          stock_quantity: number
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          name: string
+          unit: string
+          stock_quantity?: number
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          name?: string
+          unit?: string
+          stock_quantity?: number
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredients_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       kitchen_prep_counters: {
         Row: {
           restaurant_id: string
@@ -952,6 +1074,7 @@ export interface Database {
           quantity: number | null
           unit: string | null
           position: number
+          ingredient_id: string | null
         }
         Insert: {
           id?: string
@@ -960,6 +1083,7 @@ export interface Database {
           quantity?: number | null
           unit?: string | null
           position?: number
+          ingredient_id?: string | null
         }
         Update: {
           id?: string
@@ -968,8 +1092,16 @@ export interface Database {
           quantity?: number | null
           unit?: string | null
           position?: number
+          ingredient_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "kitchen_prep_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "kitchen_prep_ingredients_prep_id_fkey"
             columns: ["prep_id"]
@@ -1536,6 +1668,39 @@ export interface Database {
           updated_at?: string
         }
         Relationships: []
+      }
+      product_ingredients: {
+        Row: {
+          product_id: string
+          ingredient_id: string
+          quantity: number
+        }
+        Insert: {
+          product_id: string
+          ingredient_id: string
+          quantity: number
+        }
+        Update: {
+          product_id?: string
+          ingredient_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_ingredients_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       products: {
         Row: {
@@ -2267,6 +2432,12 @@ export interface Database {
         }
         Returns: undefined
       }
+      arquivar_ingrediente: {
+        Args: {
+          p_id: string
+        }
+        Returns: undefined
+      }
       buscar_na_vitrine: {
         Args: {
           p_termo: string
@@ -2423,6 +2594,15 @@ export interface Database {
         }
         Returns: undefined
       }
+      movimentar_ingredientes: {
+        Args: {
+          p_restaurante: string
+          p_tipo: string
+          p_itens: Json
+          p_motivo?: string
+        }
+        Returns: number
+      }
       movimento_do_caixa: {
         Args: {
           p_restaurante: string
@@ -2502,6 +2682,22 @@ export interface Database {
           p_faixas: Json
         }
         Returns: undefined
+      }
+      salvar_ficha_tecnica: {
+        Args: {
+          p_produto: string
+          p_itens: Json
+        }
+        Returns: number
+      }
+      salvar_ingrediente: {
+        Args: {
+          p_restaurante: string
+          p_nome: string
+          p_unidade: string
+          p_id?: string
+        }
+        Returns: string
       }
       simular_cupom: {
         Args: {
