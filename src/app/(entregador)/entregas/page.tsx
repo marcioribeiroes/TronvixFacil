@@ -136,6 +136,14 @@ export default async function CorridasDisponiveis() {
   }
 
   const online = eu?.availability === "online" || eu?.availability === "on_delivery"
+
+  // Autonomo com a mensalidade vencida: a fila vem vazia pela regra do banco,
+  // e a tela precisa dizer o porque.
+  const { data: assinatura } =
+    eu?.restaurant_id === null ? await supabase.rpc("minha_assinatura") : { data: null }
+  const vencida =
+    (assinatura as { cobrando?: boolean; em_dia?: boolean } | null)?.cobrando === true &&
+    (assinatura as { em_dia?: boolean }).em_dia === false
   const corridaEmCurso = Boolean(minha && minha.length > 0)
 
   return (
@@ -145,6 +153,15 @@ export default async function CorridasDisponiveis() {
           corrida em curso ja tem o caminho dele. */}
       {eu?.restaurant_id === null && eu.availability === "online" && !corridaEmCurso ? (
         <SinalDoAutonomo />
+      ) : null}
+      {vencida ? (
+        <p className="mx-auto mb-4 max-w-lg rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <strong className="text-destructive">Sua assinatura venceu</strong> e as corridas pararam
+          de chegar.{" "}
+          <Link href="/entregas/perfil" className="font-semibold underline">
+            Pagar agora
+          </Link>
+        </p>
       ) : null}
       <CorridasDoEntregador
         minhaCorrida={minha && minha.length > 0 ? paraTela(minha[0]) : null}

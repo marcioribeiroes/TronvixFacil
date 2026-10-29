@@ -59,3 +59,36 @@ export async function pedirMaisNaMesa(id: string, itens: ItemNovo[]): Promise<Re
   revalidatePath(`/pedidos/${id}`)
   return { ok: true }
 }
+
+const schemaDaAvaliacao = z.object({
+  id: z.uuid(),
+  notaDaLoja: z.number().int().min(1, "Dê uma nota para o estabelecimento.").max(5),
+  notaDoEntregador: z.number().int().min(1).max(5).nullable(),
+  comentario: z.string().trim().max(1000, "O comentário tem no máximo 1000 caracteres."),
+})
+
+/**
+ * A nota do pedido recebido. Quem avalia, a loja e o entregador saem do
+ * proprio pedido, no banco (`avaliar_pedido`); avaliar de novo corrige.
+ */
+export async function avaliarPedido(
+  entrada: z.input<typeof schemaDaAvaliacao>,
+): Promise<ResultadoDaAcao> {
+  await exigirUsuario()
+  const dados = schemaDaAvaliacao.safeParse(entrada)
+  if (!dados.success) {
+    return { ok: false, erro: dados.error.issues[0]?.message ?? "Confira a avaliação." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("avaliar_pedido", {
+    p_pedido: dados.data.id,
+    p_nota_da_loja: dados.data.notaDaLoja,
+    ...(dados.data.notaDoEntregador ? { p_nota_do_entregador: dados.data.notaDoEntregador } : {}),
+    ...(dados.data.comentario ? { p_comentario: dados.data.comentario } : {}),
+  })
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath(`/pedidos/${dados.data.id}`)
+  return { ok: true }
+}

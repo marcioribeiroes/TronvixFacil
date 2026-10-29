@@ -2,6 +2,10 @@ import type { Metadata } from "next"
 import { Bike } from "lucide-react"
 
 import { LinhaDoEntregador, type EntregadorNaLista } from "@/components/admin/linha-do-entregador"
+import {
+  PagamentosDosEntregadores,
+  type PagamentoPendente,
+} from "@/components/admin/pagamentos-dos-entregadores"
 import { Badge } from "@/components/ui/badge"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirAdminDaPlataforma } from "@/modules/auth/sessao"
@@ -95,6 +99,20 @@ export default async function PaginaDeEntregadores() {
       : null,
   }))
 
+  const { data: pendentes } = await supabase
+    .from("courier_payments")
+    .select("id, amount_cents, reference, created_at, couriers(profiles!couriers_user_id_fkey(full_name))")
+    .eq("status", "pending")
+    .order("created_at")
+
+  const pagamentos: PagamentoPendente[] = (pendentes ?? []).map((p) => ({
+    id: p.id,
+    entregador: p.couriers?.profiles?.full_name ?? "Entregador",
+    valorCentavos: p.amount_cents,
+    referencia: p.reference,
+    criadoEm: p.created_at,
+  }))
+
   const esperando = lista.filter((c) => c.situacao === "pending")
   const resto = lista.filter((c) => c.situacao !== "pending")
 
@@ -107,6 +125,8 @@ export default async function PaginaDeEntregadores() {
           loja, quando o entregador é dela.
         </p>
       </div>
+
+      <PagamentosDosEntregadores pagamentos={pagamentos} />
 
       {esperando.length > 0 ? (
         <section>

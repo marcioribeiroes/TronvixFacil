@@ -22,8 +22,10 @@ import '../modelos/modelos.dart';
 import '../sessao.dart';
 import '../tema.dart';
 import 'cadastro.dart';
+import 'assinatura.dart';
 import 'cadastro_autonomo.dart';
 import 'corrida.dart';
+import 'extrato.dart';
 
 class InicioDoEntregador extends StatefulWidget {
   const InicioDoEntregador({super.key});
@@ -39,6 +41,10 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
   RealtimeChannel? _canal;
   StreamSubscription<Ponto>? _rastro;
   Timer? _relogio;
+
+  /// Autônomo com a mensalidade vencida: a fila vem vazia pela regra do banco,
+  /// e a tela precisa dizer o porquê.
+  bool _assinaturaVencida = false;
   bool _carregando = true;
   Object? _erro;
 
@@ -138,11 +144,16 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
       final resultados = await Future.wait([
         Corridas.minhaCorrida(eu.id),
         Corridas.disponiveis(),
+        if (eu.autonomo) Corridas.minhaAssinatura(),
       ]);
       if (!mounted) return;
       setState(() {
         _minha = resultados[0] as Corrida?;
         _disponiveis = resultados[1] as List<Corrida>;
+        final assinatura =
+            eu.autonomo ? resultados[2] as Map<String, dynamic> : null;
+        _assinaturaVencida = assinatura?['cobrando'] == true &&
+            assinatura?['em_dia'] == false;
         _carregando = false;
         _erro = null;
       });
@@ -307,13 +318,24 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
   Widget _menu() => PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert),
         onSelected: (acao) {
-          if (acao == 'cliente') {
+          final eu = _eu_;
+          if (acao == 'extrato' && eu != null) {
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => TelaExtrato(entregadorId: eu.id)));
+          } else if (acao == 'assinatura') {
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TelaAssinatura()));
+          } else if (acao == 'cliente') {
             Sessao.instancia.trocarDeFluxo(Fluxo.cliente);
           } else if (acao == 'sair') {
             Sessao.instancia.sair();
           }
         },
         itemBuilder: (_) => [
+          const PopupMenuItem(value: 'extrato', child: Text('Extrato')),
+          // A assinatura é do autônomo; o do estabelecimento não paga nada.
+          if (_eu_?.autonomo ?? false)
+            const PopupMenuItem(value: 'assinatura', child: Text('Assinatura')),
           const PopupMenuItem(
               value: 'cliente', child: Text('Abrir como cliente')),
           const PopupMenuItem(value: 'sair', child: Text('Sair')),
@@ -378,7 +400,13 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
                     : '${_disponiveis.length} corrida(s) disponível(is)',
                 eu,
               ),
-              if (eu.disponibilidade == DisponibilidadeDoEntregador.offline)
+              if (_assinaturaVencida)
+                const _Recado(
+                  icone: Icons.receipt_long,
+                  texto: 'Sua assinatura venceu, e as corridas pararam de '
+                      'chegar. Pague pelo menu ⋮ → Assinatura.',
+                )
+              else if (eu.disponibilidade == DisponibilidadeDoEntregador.offline)
                 const _Recado(
                   icone: Icons.power_settings_new,
                   texto: 'Toque em "Fora do ar" ali em cima para começar a '

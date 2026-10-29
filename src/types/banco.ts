@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 45   Enums: 15   Funcoes: 42
+// Tabelas: 46   Enums: 15   Funcoes: 46
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -696,6 +696,54 @@ export interface Database {
           }
         ]
       }
+      courier_payments: {
+        Row: {
+          id: string
+          courier_id: string
+          amount_cents: number
+          reference: string
+          status: string
+          created_at: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+        }
+        Insert: {
+          id?: string
+          courier_id: string
+          amount_cents: number
+          reference: string
+          status?: string
+          created_at?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+        }
+        Update: {
+          id?: string
+          courier_id?: string
+          amount_cents?: number
+          reference?: string
+          status?: string
+          created_at?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_payments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_payments_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: true
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       courier_vehicle_rules: {
         Row: {
           vehicle_type: string
@@ -746,6 +794,7 @@ export interface Database {
           document_selfie_path: string | null
           review_note: string | null
           submitted_at: string | null
+          paid_until: string | null
         }
         Insert: {
           id?: string
@@ -778,6 +827,7 @@ export interface Database {
           document_selfie_path?: string | null
           review_note?: string | null
           submitted_at?: string | null
+          paid_until?: string | null
         }
         Update: {
           id?: string
@@ -810,6 +860,7 @@ export interface Database {
           document_selfie_path?: string | null
           review_note?: string | null
           submitted_at?: string | null
+          paid_until?: string | null
         }
         Relationships: [
           {
@@ -1697,6 +1748,11 @@ export interface Database {
           maintenance_mode: boolean
           updated_at: string
           platform_courier_delay_minutes: number
+          courier_subscription_price_cents: number
+          courier_subscription_starts_on: string | null
+          platform_pix_key: string | null
+          platform_pix_holder: string | null
+          platform_pix_city: string | null
         }
         Insert: {
           id?: boolean
@@ -1710,6 +1766,11 @@ export interface Database {
           maintenance_mode?: boolean
           updated_at?: string
           platform_courier_delay_minutes?: number
+          courier_subscription_price_cents?: number
+          courier_subscription_starts_on?: string | null
+          platform_pix_key?: string | null
+          platform_pix_holder?: string | null
+          platform_pix_city?: string | null
         }
         Update: {
           id?: boolean
@@ -1723,6 +1784,11 @@ export interface Database {
           maintenance_mode?: boolean
           updated_at?: string
           platform_courier_delay_minutes?: number
+          courier_subscription_price_cents?: number
+          courier_subscription_starts_on?: string | null
+          platform_pix_key?: string | null
+          platform_pix_holder?: string | null
+          platform_pix_city?: string | null
         }
         Relationships: []
       }
@@ -2495,6 +2561,15 @@ export interface Database {
         }
         Returns: undefined
       }
+      avaliar_pedido: {
+        Args: {
+          p_pedido: string
+          p_nota_da_loja: number
+          p_nota_do_entregador?: number
+          p_comentario?: string
+        }
+        Returns: undefined
+      }
       buscar_na_vitrine: {
         Args: {
           p_termo: string
@@ -2572,6 +2647,12 @@ export interface Database {
         }
         Returns: string[]
       }
+      confirmar_pagamento_do_entregador: {
+        Args: {
+          p_pagamento: string
+        }
+        Returns: undefined
+      }
       confirmar_pix: {
         Args: {
           p_pedido: string
@@ -2642,6 +2723,12 @@ export interface Database {
         }
         Returns: number
       }
+      gerar_pagamento_da_assinatura: {
+        Args: {
+          [chave: string]: never
+        }
+        Returns: undefined
+      }
       lancar_pedido: {
         Args: {
           p_restaurante: string
@@ -2672,6 +2759,12 @@ export interface Database {
           p_observacao?: string
         }
         Returns: undefined
+      }
+      minha_assinatura: {
+        Args: {
+          [chave: string]: never
+        }
+        Returns: Json
       }
       movimentar_ingredientes: {
         Args: {

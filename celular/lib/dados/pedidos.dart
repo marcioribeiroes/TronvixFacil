@@ -213,17 +213,29 @@ class Pedidos {
         return PosicaoDoEntregador.deMapa(r as Map<String, dynamic>);
       });
 
+  /// A nota do pedido recebido. Quem avalia, a loja e o entregador saem do
+  /// próprio pedido, no banco (`avaliar_pedido`) — antes isto gravava direto
+  /// numa coluna que não existe, e nenhuma avaliação chegava. Avaliar de novo
+  /// corrige.
   static Future<void> avaliar({
     required String pedidoId,
-    required String restauranteId,
-    required int nota,
+    required int notaDaLoja,
+    int? notaDoEntregador,
     String? comentario,
   }) =>
-      executar(() => banco.from('reviews').insert({
-            'order_id': pedidoId,
-            'restaurant_id': restauranteId,
-            'customer_id': usuarioId,
-            'rating': nota,
-            'comment': (comentario?.isEmpty ?? true) ? null : comentario,
+      executar(() => banco.rpc('avaliar_pedido', params: {
+            'p_pedido': pedidoId,
+            'p_nota_da_loja': notaDaLoja,
+            'p_nota_do_entregador': notaDoEntregador,
+            'p_comentario':
+                (comentario?.trim().isEmpty ?? true) ? null : comentario!.trim(),
           }));
+
+  /// A avaliação já feita deste pedido, para a tela mostrar e deixar corrigir.
+  static Future<Map<String, dynamic>?> minhaAvaliacao(String pedidoId) =>
+      executar(() => banco
+          .from('reviews')
+          .select('restaurant_rating, courier_rating, comment')
+          .eq('order_id', pedidoId)
+          .maybeSingle());
 }

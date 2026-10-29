@@ -225,6 +225,17 @@ class Corridas {
             'p_selfie': selfie,
           }));
 
+  /// A assinatura do autônomo, como o banco a vê (`minha_assinatura`): se
+  /// cobra, até quando está em dia, e o Pix pendente, já com o copia-e-cola.
+  static Future<Map<String, dynamic>> minhaAssinatura() => executar(() async {
+        final r = await banco.rpc('minha_assinatura');
+        return (r as Map).cast<String, dynamic>();
+      });
+
+  /// Pede o Pix do próximo mês. Se já há um pendente, é o mesmo.
+  static Future<void> gerarPagamentoDaAssinatura() =>
+      executar(() => banco.rpc('gerar_pagamento_da_assinatura'));
+
   /// As corridas esperando entregador.
   static Future<List<Corrida>> disponiveis() => executar(() async {
         final linhas = await banco

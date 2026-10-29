@@ -54,6 +54,18 @@ export default async function HistoricoDoEntregador() {
       .filter((d) => d.delivered_at && new Date(d.delivered_at) >= desde)
       .reduce((s, d) => s + d.courier_fee_cents, 0)
 
+  // O restaurante paga o entregador direto: o extrato separa quanto cada um
+  // deve, para o acerto no fim da semana.
+  const porLoja = new Map<string, { entregas: number; total: number }>()
+  for (const d of lista) {
+    if (!d.delivered_at || new Date(d.delivered_at) < semana) continue
+    const nome = d.orders?.restaurants?.name ?? "—"
+    const atual = porLoja.get(nome) ?? { entregas: 0, total: 0 }
+    atual.entregas += 1
+    atual.total += d.courier_fee_cents
+    porLoja.set(nome, atual)
+  }
+
   const doDia = somar(hoje)
   const daSemana = somar(semana)
   const doMes = lista.reduce((s, d) => s + d.courier_fee_cents, 0)
@@ -76,6 +88,29 @@ export default async function HistoricoDoEntregador() {
           </div>
         ))}
       </dl>
+
+      {porLoja.size > 0 ? (
+        <section className="rounded-xl border bg-card p-3">
+          <h2 className="text-[11px] font-semibold uppercase text-muted-foreground">
+            A receber de cada estabelecimento (7 dias)
+          </h2>
+          <ul className="mt-2 divide-y text-sm">
+            {[...porLoja.entries()]
+              .sort((a, b) => b[1].total - a[1].total)
+              .map(([nome, v]) => (
+                <li key={nome} className="flex items-center justify-between gap-3 py-1.5">
+                  <span className="min-w-0 truncate">
+                    {nome}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      · {v.entregas} {v.entregas === 1 ? "entrega" : "entregas"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-bold">{formatarReais(v.total)}</span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
 
       <p className="text-xs text-muted-foreground">
         {lista.length} {lista.length === 1 ? "entrega" : "entregas"} nos últimos 30 dias.

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { AvaliarPedido } from "@/components/cliente/avaliar-pedido"
 import { AvisosDoPedido } from "@/components/cliente/avisos-do-pedido"
 import { CancelarPedido } from "@/components/cliente/cancelar-pedido"
 import { PagarComPix } from "@/components/cliente/pagar-com-pix"
@@ -86,6 +87,17 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
   // pedido. A regra e a de `pedir_mais_na_mesa`; aqui so se decide o botao.
   const podePedirMais = pedido.fulfillment === "dine_in" && pedidoEditavel(situacao, pagamento)
 
+  // A avaliacao, depois que o pedido chegou. A do entregador so quando houve
+  // entrega - retirada e mesa nao tem a quem dar essa nota.
+  const { data: avaliacao } =
+    situacao === "delivered"
+      ? await supabase
+          .from("reviews")
+          .select("restaurant_rating, courier_rating, comment")
+          .eq("order_id", pedido.id)
+          .maybeSingle()
+      : { data: null }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <h1 className="text-sm font-semibold text-muted-foreground">
@@ -104,6 +116,24 @@ export default async function PaginaDoPedido({ params }: PageProps<"/pedidos/[id
         voltarPara={`/pedidos/${pedido.id}`}
         encerrado={situacao === "delivered" || encerradoMal}
       />
+
+      {situacao === "delivered" ? (
+        <div className="mt-6">
+          <AvaliarPedido
+            id={pedido.id}
+            comEntregador={pedido.deliveries?.status === "delivered"}
+            atual={
+              avaliacao
+                ? {
+                    loja: avaliacao.restaurant_rating,
+                    entregador: avaliacao.courier_rating,
+                    comentario: avaliacao.comment,
+                  }
+                : null
+            }
+          />
+        </div>
+      ) : null}
 
       {podePedirMais ? (
         <div className="mt-4">

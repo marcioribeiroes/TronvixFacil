@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { paraCentavos } from "@/lib/dinheiro"
+import { normalizarChave } from "@/lib/pix"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirAdminDaPlataforma } from "@/modules/auth/sessao"
 import type { Enums } from "@/types/banco"
@@ -409,5 +410,71 @@ export async function salvarLimitesDosEntregadores(dados: {
   if (error) return { ok: false, erro: error.message }
 
   recarregar("/admin/configuracoes")
+  return { ok: true }
+}
+
+// ---------------------------------------------------------------------------
+// Assinatura do entregador autonomo
+// ---------------------------------------------------------------------------
+
+/**
+ * Quando a cobranca comeca, quanto custa, e para qual chave Pix o motoboy
+ * paga. Inicio vazio = cobranca desligada (o lancamento gratis).
+ *
+ * A chave e gravada ja normalizada (`normalizarChave`): e ela que entra no
+ * copia-e-cola que o banco monta, e um telefone sem +55 faria o banco do
+ * motoboy recusar o codigo inteiro.
+ */
+export async function salvarAssinaturaDosEntregadores(dados: {
+  inicio: string
+  preco: string
+  tipoDaChave: "cpf" | "cnpj" | "email" | "telefone" | "aleatoria"
+  chave: string
+  titular: string
+  cidade: string
+}): Promise<ResultadoDaAcao> {
+  await exigirAdminDaPlataforma()
+
+  const inicio = dados.inicio.trim()
+  if (inicio && !/^\d{4}-\d{2}-\d{2}$/.test(inicio)) {
+    return { ok: false, erro: "Data de início inválida.", campo: "inicio" }
+  }
+  const centavos = paraCentavos(dados.preco)
+  if (centavos === null || centavos < 0 || centavos > 100_000) {
+    return { ok: false, erro: "Preço inválido.", campo: "preco" }
+  }
+  const chave = dados.chave.trim() ? normalizarChave(dados.chave, dados.tipoDaChave) : ""
+  if (inicio && (!chave || !dados.titular.trim() || !dados.cidade.trim())) {
+    return {
+      ok: false,
+      erro: "Para cobrar, informe a chave Pix, o titular e a cidade de quem recebe.",
+      campo: "chave",
+    }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase
+    .from("platform_settings")
+    .update({
+      courier_subscription_starts_on: inicio || null,
+      courier_subscription_price_cents: centavos,
+      platform_pix_key: chave || null,
+      platform_pix_holder: dados.titular.trim() || null,
+      platform_pix_city: dados.cidade.trim() || null,
+    })
+    .eq("id", true)
+  if (error) return { ok: false, erro: error.message }
+
+  recarregar("/admin/configuracoes")
+  return { ok: true }
+}
+
+/** O Pix do motoboy caiu: mais 30 dias de assinatura (regra no banco). */
+export async function confirmarPagamentoDoEntregador(id: string): Promise<ResultadoDaAcao> {
+  await exigirAdminDaPlataforma()
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("confirmar_pagamento_do_entregador", { p_pagamento: id })
+  if (error) return { ok: false, erro: error.message }
+  recarregar("/admin/entregadores")
   return { ok: true }
 }

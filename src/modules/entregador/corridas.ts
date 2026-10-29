@@ -147,3 +147,13 @@ export async function publicarPosicao(
   if (error) return { ok: false, erro: error.message }
   return { ok: true }
 }
+
+/** Pede o Pix do proximo mes de assinatura. Se ja ha um pendente, e o mesmo. */
+export async function gerarPagamentoDaAssinatura(): Promise<ResultadoDaAcao> {
+  await exigirEntregador()
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("gerar_pagamento_da_assinatura")
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath("/entregas/perfil")
+  return { ok: true }
+}

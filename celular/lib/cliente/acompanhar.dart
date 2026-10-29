@@ -11,6 +11,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../dados/edicao.dart';
+import 'avaliar.dart';
 import 'pedir_mais.dart';
 import '../comum/mapa.dart';
 import '../comum/sons.dart';
@@ -229,6 +230,13 @@ class _TelaAcompanharState extends State<TelaAcompanhar> {
           if (p.pagamento?.momento == MomentoDoPagamento.noApp &&
               p.pagamento?.status == StatusDoPagamento.pendente)
             _aguardandoPagamento(p),
+          if (p.status == StatusDoPedido.entregue) ...[
+            const Divider(),
+            AvaliarPedido(
+              pedidoId: p.id,
+              comEntregador: p.tipo == TipoDeEntrega.entrega,
+            ),
+          ],
           const Divider(),
           ListTile(
             leading: Foto(

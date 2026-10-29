@@ -1,5 +1,9 @@
 import type { Metadata } from "next"
 
+import {
+  AssinaturaDoEntregador,
+  type Assinatura,
+} from "@/components/entregador/assinatura-do-entregador"
 import { formatarTelefone } from "@/lib/telefone"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirEntregador } from "@/modules/auth/sessao"
@@ -32,6 +36,27 @@ const VEICULO: Record<string, string> = {
 export default async function PerfilDoEntregador() {
   const { contexto, entregadorId } = await exigirEntregador()
   const supabase = await criarClienteDoServidor()
+
+  // So o autonomo tem assinatura; para o do estabelecimento vem "aplica: false".
+  const { data: bruta } = await supabase.rpc("minha_assinatura")
+  const dados = (bruta ?? {}) as Record<string, unknown>
+  const pendente = dados.pendente as Record<string, unknown> | null | undefined
+  const assinatura: Assinatura | null = dados.aplica
+    ? {
+        cobrando: Boolean(dados.cobrando),
+        inicio: (dados.inicio as string | null) ?? null,
+        vence: (dados.vence as string | null) ?? null,
+        emDia: Boolean(dados.em_dia),
+        precoCentavos: Number(dados.preco_centavos ?? 0),
+        pendente: pendente
+          ? {
+              valorCentavos: Number(pendente.valor_centavos),
+              referencia: String(pendente.referencia),
+              copiaECola: String(pendente.copia_e_cola),
+            }
+          : null,
+      }
+    : null
 
   const { data: eu } = await supabase
     .from("couriers")
@@ -78,6 +103,8 @@ export default async function PerfilDoEntregador() {
           </div>
         ))}
       </dl>
+
+      {assinatura ? <AssinaturaDoEntregador assinatura={assinatura} /> : null}
 
       <p className="rounded-xl border border-dashed p-4 text-xs text-muted-foreground">
         Dado errado aqui se corrige com {eu?.restaurants?.name ?? "a plataforma"}
