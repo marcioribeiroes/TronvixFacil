@@ -135,6 +135,12 @@ export default async function LayoutDoCliente({ children }: LayoutProps<"/">) {
           >
             Coloque no ar
           </Link>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Faz entregas?{" "}
+            <Link className="font-semibold text-marca hover:underline" href="/entregas/cadastro">
+              Quero entregar
+            </Link>
+          </p>
 
           {/* A politica precisa ser alcancavel de qualquer tela, sem login: e
               o que a LGPD pede e o que a loja de aplicativos confere. */}

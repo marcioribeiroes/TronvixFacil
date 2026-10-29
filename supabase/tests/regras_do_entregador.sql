@@ -260,4 +260,30 @@ begin
 end;
 $$;
 
+-- -----------------------------------------------------------------------------
+-- O cadastro nasce pendente, mesmo pedindo outra coisa
+-- -----------------------------------------------------------------------------
+insert into auth.users (id, email)
+values ('99999999-9999-9999-9999-999999999999', 'espertinho@teste.test');
+
+do $$
+begin
+  -- Direto na API, com a chave anonima: pedindo para nascer aprovado, online e
+  -- com cem entregas. O papel continua o do teste (o ambiente local nao da
+  -- INSERT ao authenticated); quem decide aqui e o gatilho, pelo auth.uid().
+  perform set_config('request.jwt.claim.sub', '99999999-9999-9999-9999-999999999999', true);
+  insert into couriers (user_id, restaurant_id, status, availability,
+                        deliveries_count, rating_avg, rating_count)
+  values ('99999999-9999-9999-9999-999999999999',
+          'aaaaaaaa-0000-0000-0000-000000000001',
+          'approved', 'online', 100, 5, 100);
+
+  perform pg_temp.conferir(
+    (select status = 'pending' and availability = 'offline'
+            and deliveries_count = 0 and rating_count = 0
+       from couriers where user_id = '99999999-9999-9999-9999-999999999999'),
+    'o cadastro feito pelo proprio entregador nasce pendente, offline e sem historico');
+end;
+$$;
+
 rollback;

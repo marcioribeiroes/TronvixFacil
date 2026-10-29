@@ -14,6 +14,7 @@ import '../comum/widgets.dart';
 import '../main.dart';
 import '../sessao.dart';
 import '../tema.dart';
+import '../entregador/cadastro.dart';
 import 'enderecos.dart';
 
 class TelaConta extends StatelessWidget {
@@ -88,6 +89,22 @@ class TelaConta extends StatelessWidget {
                               builder: (_) => const TelaEnderecos()),
                         ),
                       ),
+                      // Sem esta porta, o cadastro de entregador existia mas
+                      // ninguem chegava nele: o fluxo do entregador so aparece
+                      // para quem ja tem cadastro.
+                      if (sessao.entregador == null)
+                        ListTile(
+                          leading: const Icon(Icons.two_wheeler),
+                          title: const Text('Quero entregar'),
+                          subtitle:
+                              const Text('Faça entregas para um estabelecimento'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const TelaCadastroDeEntregador()),
+                          ),
+                        ),
                       if (sessao.fluxosDisponiveis.length > 1) ...[
                         const Divider(),
                         Padding(

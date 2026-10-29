@@ -82,7 +82,14 @@ class _TelaCadastroDeEntregadorState extends State<TelaCadastroDeEntregador> {
         placa: _placa.text,
       );
       await Sessao.instancia.carregar();
-      if (mounted) avisar(context, 'Cadastro enviado. Aguarde a aprovação.');
+      if (!mounted) return;
+      avisar(context, 'Cadastro enviado. Aguarde a aprovação.');
+      // Aberta pela conta do cliente, a tela sai da frente e o aplicativo vai
+      // para o fluxo do entregador, que mostra o "em análise".
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+        Sessao.instancia.trocarDeFluxo(Fluxo.entregador);
+      }
     } catch (e) {
       if (mounted) avisar(context, e.toString(), erro: true);
     } finally {

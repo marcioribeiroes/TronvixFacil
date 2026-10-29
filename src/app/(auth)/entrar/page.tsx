@@ -39,6 +39,12 @@ export default async function PaginaDeLogin({ searchParams }: PageProps<"/entrar
             Coloque no ar
           </Link>
         </p>
+        <p>
+          Faz entregas?{" "}
+          <Link href="/entregas/cadastro" className="font-semibold text-marca hover:underline">
+            Quero entregar
+          </Link>
+        </p>
       </div>
     </div>
   )

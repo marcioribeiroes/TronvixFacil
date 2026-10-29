@@ -48,7 +48,11 @@ export default async function CorridasDisponiveis() {
         .select(CORRIDA_COMPLETA)
         .eq("status", "searching_courier")
         .order("created_at"),
-      supabase.from("couriers").select("availability").eq("id", entregadorId).single(),
+      supabase
+        .from("couriers")
+        .select("status, availability, restaurants(name)")
+        .eq("id", entregadorId)
+        .single(),
       supabase
         .from("deliveries")
         .select("courier_fee_cents")
@@ -90,6 +94,25 @@ export default async function CorridasDisponiveis() {
       // comparar corridas, nao para prometer hora de chegada.
       distanciaKm: d.distance_km ?? null,
     }
+  }
+
+  // Antes da aprovacao a fila vem vazia pela RLS, e o banco recusa ficar
+  // online. Mostrar a fila vazia com a chave de online seria prometer trabalho
+  // que nao vai chegar.
+  if (eu?.status !== "approved") {
+    const loja = eu?.restaurants?.name ?? "o estabelecimento"
+    return (
+      <div className="mx-auto max-w-lg rounded-xl border bg-card p-6 text-center">
+        <h1 className="text-lg font-bold">
+          {eu?.status === "suspended" ? "Cadastro suspenso" : "Cadastro em análise"}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {eu?.status === "suspended"
+            ? `Fale com ${loja} para voltar a receber corridas.`
+            : `Seu cadastro foi para ${loja}. Assim que aprovarem, as corridas aparecem aqui.`}
+        </p>
+      </div>
+    )
   }
 
   return (
