@@ -28,8 +28,8 @@ export type MesaNaTela = {
 
 /**
  * A situacao da mesa vira a cor do cartao, para o salao inteiro ser lido de
- * longe: verde esta livre, laranja tem conta aberta, preto esta fora de uso.
- * Mesa fora de uso com pedido antigo ainda aberto fica laranja - a conta vem
+ * longe: verde esta livre, vermelho tem pedido na conta, preto esta fora de uso.
+ * Mesa fora de uso com pedido antigo ainda aberto fica vermelha - a conta vem
  * antes, e e ela que alguem precisa fechar.
  */
 type Situacao = "livre" | "ocupada" | "fora"
@@ -41,7 +41,7 @@ function situacao(m: MesaNaTela): Situacao {
 
 const COR: Record<Situacao, string> = {
   livre: "bg-emerald-600",
-  ocupada: "bg-orange-500",
+  ocupada: "bg-red-600",
   fora: "bg-zinc-900 dark:bg-zinc-800",
 }
 
