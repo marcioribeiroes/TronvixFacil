@@ -1,0 +1,4 @@
+- Entregador autônomo: cadastro com documentos e corridas por perto, no raio do seu veículo
+- A loja define quanto paga por corrida; você vê o valor e o R$/km antes de aceitar
+- Aviso no celular quando surge corrida que você pode pegar
+- Extrato com o que cada loja deve, e avaliação do pedido com estrelas
