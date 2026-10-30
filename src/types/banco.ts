@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 46   Enums: 15   Funcoes: 46
+// Tabelas: 46   Enums: 15   Funcoes: 47
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -902,6 +902,7 @@ export interface Database {
           created_at: string
           updated_at: string
           searching_since: string | null
+          autonomos_avisados_em: string | null
         }
         Insert: {
           id?: string
@@ -918,6 +919,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           searching_since?: string | null
+          autonomos_avisados_em?: string | null
         }
         Update: {
           id?: string
@@ -934,6 +936,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           searching_since?: string | null
+          autonomos_avisados_em?: string | null
         }
         Relationships: [
           {
@@ -1753,6 +1756,7 @@ export interface Database {
           platform_pix_key: string | null
           platform_pix_holder: string | null
           platform_pix_city: string | null
+          min_courier_fee_cents: number
         }
         Insert: {
           id?: boolean
@@ -1771,6 +1775,7 @@ export interface Database {
           platform_pix_key?: string | null
           platform_pix_holder?: string | null
           platform_pix_city?: string | null
+          min_courier_fee_cents?: number
         }
         Update: {
           id?: boolean
@@ -1789,6 +1794,7 @@ export interface Database {
           platform_pix_key?: string | null
           platform_pix_holder?: string | null
           platform_pix_city?: string | null
+          min_courier_fee_cents?: number
         }
         Relationships: []
       }
@@ -2262,6 +2268,8 @@ export interface Database {
           pix_key_type: string | null
           pix_recipient_name: string | null
           pix_city: string | null
+          courier_pay_base_cents: number | null
+          courier_pay_per_km_cents: number
           aberto_agora: boolean | null
           aceita_pix: boolean | null
           no_horario: boolean | null
@@ -2310,6 +2318,8 @@ export interface Database {
           pix_key_type?: string | null
           pix_recipient_name?: string | null
           pix_city?: string | null
+          courier_pay_base_cents?: number | null
+          courier_pay_per_km_cents?: number
         }
         Update: {
           id?: string
@@ -2354,6 +2364,8 @@ export interface Database {
           pix_key_type?: string | null
           pix_recipient_name?: string | null
           pix_city?: string | null
+          courier_pay_base_cents?: number | null
+          courier_pay_per_km_cents?: number
         }
         Relationships: [
           {
@@ -2558,6 +2570,13 @@ export interface Database {
       arquivar_ingrediente: {
         Args: {
           p_id: string
+        }
+        Returns: undefined
+      }
+      aumentar_valor_da_corrida: {
+        Args: {
+          p_entrega: string
+          p_valor_centavos: number
         }
         Returns: undefined
       }

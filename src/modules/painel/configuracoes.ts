@@ -350,3 +350,59 @@ export async function salvarFaixasDeEntrega(
   revalidatePath("/painel/configuracoes")
   return { ok: true }
 }
+
+/**
+ * Quanto a loja paga ao entregador por corrida: um valor fixo (vazio = o frete
+ * cobrado do cliente) e, se quiser, um adicional por km. O piso da plataforma
+ * vale sempre - quem aplica e o banco, quando a corrida nasce
+ * (`app.valor_da_corrida`).
+ */
+export async function salvarValorDoEntregador(dados: {
+  fixo: string
+  porKm: string
+}): Promise<ResultadoDaAcao> {
+  const { vinculo } = await exigirGestao()
+
+  const fixo = dados.fixo.trim() === "" ? null : paraCentavos(dados.fixo)
+  if (fixo !== null && (fixo < 0 || fixo > 100_000)) {
+    return { ok: false, erro: "Valor por corrida inválido.", campo: "fixo" }
+  }
+  if (dados.fixo.trim() !== "" && fixo === null) {
+    return { ok: false, erro: "Valor por corrida inválido.", campo: "fixo" }
+  }
+  const porKm = dados.porKm.trim() === "" ? 0 : paraCentavos(dados.porKm)
+  if (porKm === null || porKm < 0 || porKm > 10_000) {
+    return { ok: false, erro: "Valor por km inválido.", campo: "porKm" }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase
+    .from("restaurants")
+    .update({ courier_pay_base_cents: fixo, courier_pay_per_km_cents: porKm })
+    .eq("id", vinculo.restauranteId)
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/entregas")
+  return { ok: true }
+}
+
+/** Corrida parada sem entregador: a loja oferece mais. So sobe (regra no banco). */
+export async function aumentarValorDaCorrida(
+  entregaId: string,
+  valor: string,
+): Promise<ResultadoDaAcao> {
+  await exigirGestao()
+  const centavos = paraCentavos(valor)
+  if (centavos === null) return { ok: false, erro: "Valor inválido." }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("aumentar_valor_da_corrida", {
+    p_entrega: entregaId,
+    p_valor_centavos: centavos,
+  })
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/entregas")
+  revalidatePath("/painel/pedidos")
+  return { ok: true }
+}

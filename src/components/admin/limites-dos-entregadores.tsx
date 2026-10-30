@@ -27,14 +27,17 @@ const ORDEM = ["foot", "bicycle", "motorcycle", "car"]
 
 export function LimitesDosEntregadores({
   espera,
+  pisoCentavos,
   limites,
 }: {
   espera: number
+  pisoCentavos: number
   limites: LimiteDoVeiculo[]
 }) {
   const [enviando, iniciar] = useTransition()
   const [aviso, setAviso] = useState<{ tipo: "erro" | "ok"; texto: string } | null>(null)
   const [minutos, setMinutos] = useState(String(espera))
+  const [piso, setPiso] = useState((pisoCentavos / 100).toFixed(2).replace(".", ","))
   const [linhas, setLinhas] = useState(
     [...limites].sort((a, b) => ORDEM.indexOf(a.veiculo) - ORDEM.indexOf(b.veiculo)),
   )
@@ -46,7 +49,11 @@ export function LimitesDosEntregadores({
   function salvar() {
     setAviso(null)
     iniciar(async () => {
-      const r = await salvarLimitesDosEntregadores({ esperaEmMinutos: minutos, limites: linhas })
+      const r = await salvarLimitesDosEntregadores({
+        esperaEmMinutos: minutos,
+        pisoDaCorrida: piso,
+        limites: linhas,
+      })
       setAviso(r.ok ? { tipo: "ok", texto: "Limites salvos." } : { tipo: "erro", texto: r.erro })
     })
   }
@@ -68,14 +75,28 @@ export function LimitesDosEntregadores({
         </p>
       </div>
 
-      <div className="max-w-56 space-y-2">
-        <Label htmlFor="espera">Espera antes de abrir (minutos)</Label>
-        <Input
-          id="espera"
-          inputMode="numeric"
-          value={minutos}
-          onChange={(e) => setMinutos(e.target.value)}
-        />
+      <div className="grid max-w-lg gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="espera">Espera antes de abrir (minutos)</Label>
+          <Input
+            id="espera"
+            inputMode="numeric"
+            value={minutos}
+            onChange={(e) => setMinutos(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="piso">Mínimo por corrida (R$)</Label>
+          <Input
+            id="piso"
+            inputMode="decimal"
+            value={piso}
+            onChange={(e) => setPiso(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Nenhuma corrida paga menos, nem com frete grátis. A loja pode pagar mais.
+          </p>
+        </div>
       </div>
 
       <table className="w-full text-sm">

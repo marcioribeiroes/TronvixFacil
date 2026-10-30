@@ -373,6 +373,7 @@ export async function salvarConfiguracaoDaPlataforma(dados: {
  */
 export async function salvarLimitesDosEntregadores(dados: {
   esperaEmMinutos: string
+  pisoDaCorrida: string
   limites: { veiculo: string; viagemKm: string; buscaKm: string }[]
 }): Promise<ResultadoDaAcao> {
   await exigirAdminDaPlataforma()
@@ -381,6 +382,12 @@ export async function salvarLimitesDosEntregadores(dados: {
   const espera = Number(dados.esperaEmMinutos)
   if (!Number.isInteger(espera) || espera < 0 || espera > 60) {
     return { ok: false, erro: "A espera vai de 0 a 60 minutos.", campo: "espera" }
+  }
+
+  // O piso: nenhuma corrida paga menos, nem com frete gratis (app.valor_da_corrida).
+  const piso = paraCentavos(dados.pisoDaCorrida)
+  if (piso === null || piso < 0 || piso > 100_000) {
+    return { ok: false, erro: "Valor mínimo por corrida inválido.", campo: "piso" }
   }
 
   const km = (texto: string) => {
@@ -405,7 +412,7 @@ export async function salvarLimitesDosEntregadores(dados: {
 
   const { error } = await supabase
     .from("platform_settings")
-    .update({ platform_courier_delay_minutes: espera })
+    .update({ platform_courier_delay_minutes: espera, min_courier_fee_cents: piso })
     .eq("id", true)
   if (error) return { ok: false, erro: error.message }
 

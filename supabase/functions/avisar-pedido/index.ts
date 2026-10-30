@@ -10,6 +10,11 @@
  *               nada e ficava reabrindo o aplicativo para ver se tinha mudado
  *               — que e exatamente o que o push existe para evitar.
  *
+ *   QUEM ENTREGA quando surge corrida que ele pode aceitar ({ tipo: "corrida" },
+ *               mandado pelos gatilhos de deliveries e pelo relogio dos
+ *               autonomos). Quem pode e o banco que diz
+ *               (`entregadores_para_avisar`), pela mesma regra da fila.
+ *
  * Roda no Supabase, nao no Next: o banco esta na nuvem e nao alcanca o
  * servidor de desenvolvimento de ninguem.
  *
@@ -284,6 +289,103 @@ async function destinatarios(
   return { usuarios: [pedido.customer_id], aviso }
 }
 
+/**
+ * O aviso de corrida: quanto paga, quanto roda, de onde sai. E o que o
+ * entregador precisa para decidir se vale abrir o aplicativo.
+ */
+async function avisoDeCorrida(
+  entregaId: string,
+  soAutonomos: boolean,
+  aumento: boolean,
+): Promise<{ usuarios: string[]; aviso: Aviso } | null> {
+  const { data: quem } = await supabase.rpc("entregadores_para_avisar", {
+    p_entrega: entregaId,
+    p_so_autonomos: soAutonomos,
+  })
+  const usuarios = ((quem ?? []) as { user_id: string }[]).map((q) => q.user_id)
+  if (usuarios.length === 0) return null
+
+  const { data: entrega } = await supabase
+    .from("deliveries")
+    .select("courier_fee_cents, distance_km, restaurants(name)")
+    .eq("id", entregaId)
+    .single()
+  if (!entrega) return null
+
+  const km = entrega.distance_km === null ? null : Number(entrega.distance_km)
+  const loja = (entrega.restaurants as { name?: string } | null)?.name ?? "Corrida nova"
+  return {
+    usuarios,
+    aviso: {
+      titulo: aumento
+        ? `Corrida aumentou: ${emReais(entrega.courier_fee_cents)}`
+        : `Corrida de ${emReais(entrega.courier_fee_cents)}`,
+      corpo: km === null
+        ? `Retirar em ${loja}`
+        : `${km.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km · retirar em ${loja}`,
+      url: "/entregas",
+    },
+  }
+}
+
+/**
+ * Manda o aviso para cada aparelho das pessoas: navegador e celular. Limpa as
+ * inscricoes e os aparelhos que morreram no caminho.
+ */
+async function entregar(usuarios: string[], aviso: Aviso, referencia: string) {
+  const { data: inscricoes } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .in("user_id", usuarios)
+
+  const carga = JSON.stringify(aviso)
+
+  let entregues = 0
+  const mortas: string[] = []
+
+  for (const i of inscricoes ?? []) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth } },
+        carga,
+      )
+      entregues++
+    } catch (e) {
+      // 404 e 410 sao o navegador dizendo que a inscricao morreu: aba
+      // desinstalada, permissao revogada, aparelho trocado. Guardar
+      // inscricao morta so faz a proxima entrega demorar mais.
+      const status = (e as { statusCode?: number }).statusCode
+      if (status === 404 || status === 410) mortas.push(i.id)
+    }
+  }
+
+  if (mortas.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", mortas)
+  }
+
+  // O celular. Um erro aqui nao pode derrubar o que o navegador ja entregou.
+  let noCelular = { entregues: 0, mortos: [] as string[] }
+  try {
+    const { data: aparelhos } = await supabase
+      .from("device_tokens")
+      .select("id, token")
+      .in("user_id", usuarios)
+    noCelular = await enviarAoCelular(aparelhos ?? [], aviso, referencia)
+    if (noCelular.mortos.length > 0) {
+      await supabase.from("device_tokens").delete().in("id", noCelular.mortos)
+    }
+  } catch (e) {
+    console.error("celular:", e instanceof Error ? e.message : e)
+  }
+
+  return {
+    entregues,
+    removidas: mortas.length,
+    no_celular: noCelular.entregues,
+    aparelhos_removidos: noCelular.mortos.length,
+  }
+}
+
 // A chave que o gatilho do banco manda (`app.configuracao.chave_de_servico`).
 // A funcao e publica na rede — sem esta conferencia, qualquer um que soubesse
 // o endereco mandava aviso falso para qualquer cliente, em nome da loja.
@@ -296,6 +398,18 @@ Deno.serve(async (req) => {
 
   try {
     const corpo = await req.json()
+
+    if (corpo.tipo === "corrida") {
+      if (typeof corpo.entrega !== "string") return new Response("sem entrega", { status: 400 })
+      const alvo = await avisoDeCorrida(
+        corpo.entrega,
+        corpo.so_autonomos === true,
+        corpo.motivo === "aumento",
+      )
+      if (!alvo) return new Response("nada a avisar", { status: 200 })
+      return Response.json(await entregar(alvo.usuarios, alvo.aviso, corpo.entrega))
+    }
+
     const pedido = corpo.record as Pedido | undefined
     const anterior = (corpo.old_record ?? null) as { status?: string } | null
 
@@ -310,57 +424,7 @@ Deno.serve(async (req) => {
     const alvo = await destinatarios(pedido, anterior)
     if (!alvo) return new Response("nada a avisar", { status: 200 })
 
-    const { data: inscricoes } = await supabase
-      .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth")
-      .in("user_id", alvo.usuarios)
-
-    const carga = JSON.stringify(alvo.aviso)
-
-    let entregues = 0
-    const mortas: string[] = []
-
-    for (const i of inscricoes ?? []) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth } },
-          carga,
-        )
-        entregues++
-      } catch (e) {
-        // 404 e 410 sao o navegador dizendo que a inscricao morreu: aba
-        // desinstalada, permissao revogada, aparelho trocado. Guardar
-        // inscricao morta so faz a proxima entrega demorar mais.
-        const status = (e as { statusCode?: number }).statusCode
-        if (status === 404 || status === 410) mortas.push(i.id)
-      }
-    }
-
-    if (mortas.length > 0) {
-      await supabase.from("push_subscriptions").delete().in("id", mortas)
-    }
-
-    // O celular. Um erro aqui nao pode derrubar o que o navegador ja entregou.
-    let noCelular = { entregues: 0, mortos: [] as string[] }
-    try {
-      const { data: aparelhos } = await supabase
-        .from("device_tokens")
-        .select("id, token")
-        .in("user_id", alvo.usuarios)
-      noCelular = await enviarAoCelular(aparelhos ?? [], alvo.aviso, pedido.id)
-      if (noCelular.mortos.length > 0) {
-        await supabase.from("device_tokens").delete().in("id", noCelular.mortos)
-      }
-    } catch (e) {
-      console.error("celular:", e instanceof Error ? e.message : e)
-    }
-
-    return Response.json({
-      entregues,
-      removidas: mortas.length,
-      no_celular: noCelular.entregues,
-      aparelhos_removidos: noCelular.mortos.length,
-    })
+    return Response.json(await entregar(alvo.usuarios, alvo.aviso, pedido.id))
   } catch (e) {
     return new Response(`erro: ${e instanceof Error ? e.message : e}`, { status: 500 })
   }

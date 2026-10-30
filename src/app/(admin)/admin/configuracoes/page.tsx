@@ -24,7 +24,7 @@ export default async function PaginaDeConfiguracoes() {
     supabase
       .from("platform_settings")
       .select(
-        "brand_name, support_email, support_phone, default_commission_bps, default_courier_fee_cents, min_order_cents, allow_new_signups, maintenance_mode, platform_courier_delay_minutes, courier_subscription_starts_on, courier_subscription_price_cents, platform_pix_key, platform_pix_holder, platform_pix_city",
+        "brand_name, support_email, support_phone, default_commission_bps, default_courier_fee_cents, min_order_cents, allow_new_signups, maintenance_mode, platform_courier_delay_minutes, min_courier_fee_cents, courier_subscription_starts_on, courier_subscription_price_cents, platform_pix_key, platform_pix_holder, platform_pix_city",
       )
       .maybeSingle(),
     supabase.from("courier_vehicle_rules").select("vehicle_type, max_trip_km, max_pickup_km"),
@@ -44,6 +44,7 @@ export default async function PaginaDeConfiguracoes() {
           <ConfiguracoesDaPlataforma configuracao={configuracao} />
           <LimitesDosEntregadores
             espera={configuracao.platform_courier_delay_minutes}
+            pisoCentavos={configuracao.min_courier_fee_cents}
             limites={(limites ?? []).map((l) => ({
               veiculo: l.vehicle_type,
               viagemKm: l.max_trip_km === null ? "" : String(l.max_trip_km).replace(".", ","),

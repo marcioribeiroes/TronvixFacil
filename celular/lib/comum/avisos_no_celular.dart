@@ -98,10 +98,16 @@ class AvisosNoCelular {
   }
 
   /// O toque no aviso. Para o cliente, abre o pedido; para o balcão, o
-  /// aplicativo já abre na fila, que é onde o pedido novo está.
+  /// aplicativo já abre na fila, que é onde o pedido novo está. Corrida nova
+  /// leva o entregador direto às corridas, mesmo que o app estivesse no
+  /// fluxo do cliente.
   static void _abrir(RemoteMessage mensagem) {
     final pedido = mensagem.data['pedido'];
     final url = mensagem.data['url'] as String? ?? '';
+    if (url == '/entregas') {
+      Sessao.instancia.trocarDeFluxo(Fluxo.entregador);
+      return;
+    }
     if (pedido is! String || !url.startsWith('/pedidos/')) return;
     if (Sessao.instancia.fluxo != Fluxo.cliente) return;
 

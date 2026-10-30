@@ -477,11 +477,25 @@ class _InicioDoEntregadorState extends State<InicioDoEntregador> {
                         style: const TextStyle(
                             fontWeight: FontWeight.w800, fontSize: 16)),
                   ),
-                  Text(emReais(c.entrega.taxaDoEntregadorCentavos),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: Cores.sucesso)),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(emReais(c.entrega.taxaDoEntregadorCentavos),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: Cores.sucesso)),
+                      // O valor por km da viagem (loja → cliente): é a razão
+                      // entre os dois que diz se a corrida vale. Abaixo de
+                      // meio km a conta engana.
+                      if ((c.entrega.distanciaKm ?? 0) >= 0.5)
+                        Text(
+                            '${emReais((c.entrega.taxaDoEntregadorCentavos / c.entrega.distanciaKm!).round())}/km'
+                            ' · ${distanciaKm(c.entrega.distanciaKm!)}',
+                            style: const TextStyle(
+                                fontSize: 12, color: Cores.textoSuave)),
+                    ],
+                  ),
                 ],
               ),
               if (emAndamento) ...[

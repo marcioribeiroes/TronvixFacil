@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { EquipeDeEntrega } from "@/components/painel/equipe-de-entrega"
+import { ValorDoEntregador } from "@/components/painel/valor-do-entregador"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirGestao } from "@/modules/auth/sessao"
 import { ROTULO_DA_ENTREGA, type SituacaoDaEntrega } from "@/modules/pedidos/maquina-de-estados"
@@ -11,7 +12,8 @@ export default async function PaginaDeEntregas() {
   const { vinculo } = await exigirGestao()
   const supabase = await criarClienteDoServidor()
 
-  const [{ data: entregadores }, { data: corridas }, { data: loja }] = await Promise.all([
+  const [{ data: entregadores }, { data: corridas }, { data: loja }, { data: plataforma }] =
+    await Promise.all([
     // A RLS ja recorta para os deste estabelecimento; nao ha `where` aqui de
     // proposito — se aparecer gente de fora, o conserto e no banco.
     supabase
@@ -33,9 +35,10 @@ export default async function PaginaDeEntregas() {
       .order("created_at"),
     supabase
       .from("restaurants")
-      .select("accepts_platform_couriers")
+      .select("accepts_platform_couriers, delivery_fee_cents, courier_pay_base_cents, courier_pay_per_km_cents")
       .eq("id", vinculo.restauranteId)
       .single(),
+    supabase.from("platform_settings").select("min_courier_fee_cents").maybeSingle(),
   ])
 
   return (
@@ -47,6 +50,15 @@ export default async function PaginaDeEntregas() {
           a corrida: quem leva é gente sua, e quem aprova é você.
         </p>
       </div>
+
+      {loja ? (
+        <ValorDoEntregador
+          fixoCentavos={loja.courier_pay_base_cents}
+          porKmCentavos={loja.courier_pay_per_km_cents}
+          freteCentavos={loja.delivery_fee_cents}
+          pisoCentavos={plataforma?.min_courier_fee_cents ?? 600}
+        />
+      ) : null}
 
       <EquipeDeEntrega
         aceitaDeFora={loja?.accepts_platform_couriers ?? false}

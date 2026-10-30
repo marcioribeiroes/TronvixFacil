@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { formatarReais } from "@/lib/dinheiro"
 import {
   aceitarEntregadorDaPlataforma,
+  aumentarValorDaCorrida,
   decidirSobreEntregador,
 } from "@/modules/painel/configuracoes"
 
@@ -88,6 +89,30 @@ export function EquipeDeEntrega({
                   {c.bairro ? ` · ${c.bairro}` : ""}
                 </span>
                 <span className="font-semibold">{formatarReais(c.taxaCentavos)}</span>
+                {/* Ninguem pegou: a loja pode oferecer mais. So sobe - o
+                    entregador decidiu olhando o valor que estava ali. */}
+                {c.semEntregador ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={enviando}
+                    onClick={() => {
+                      const sugestao = ((c.taxaCentavos + 200) / 100).toFixed(2).replace(".", ",")
+                      const valor = window.prompt(
+                        `Ninguém aceitou ainda. Quanto você paga por esta corrida? (hoje: ${formatarReais(c.taxaCentavos)})`,
+                        sugestao,
+                      )
+                      if (!valor) return
+                      setErro(null)
+                      iniciar(async () => {
+                        const r = await aumentarValorDaCorrida(c.id, valor)
+                        if (!r.ok) setErro(r.erro)
+                      })
+                    }}
+                  >
+                    Aumentar
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>

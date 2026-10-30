@@ -313,6 +313,11 @@ export function CorridasDoEntregador({
                   {c.distanciaKm !== null ? (
                     <p className="text-xs text-muted-foreground">
                       {emDistancia(c.distanciaKm)} de percurso
+                      {c.distanciaKm >= 0.5 ? (
+                        <span className="block font-semibold text-foreground">
+                          {formatarReais(Math.round(c.ganhoCentavos / c.distanciaKm))}/km
+                        </span>
+                      ) : null}
                     </p>
                   ) : null}
                 </div>
