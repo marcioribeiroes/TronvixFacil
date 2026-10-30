@@ -91,20 +91,15 @@ export async function avancarCorrida(
   return { ok: true }
 }
 
-/** Desistir devolve a corrida a fila. O gatilho do banco limpa o entregador. */
+/** Desistir devolve a corrida a fila (`devolver_corrida`, que confere que ela e sua). */
 export async function desistirDaCorrida(entregaId: string): Promise<ResultadoDaAcao> {
-  const { entregadorId } = await exigirEntregador()
+  await exigirEntregador()
   const supabase = await criarClienteDoServidor()
 
-  const { error } = await supabase
-    .from("deliveries")
-    .update({ status: "searching_courier" })
-    .eq("id", entregaId)
-    .eq("courier_id", entregadorId)
-
+  // Pelo banco: por UPDATE direto o autonomo era recusado, porque a corrida
+  // devolvida volta para a espera da loja e some da vista dele no mesmo passo.
+  const { error } = await supabase.rpc("devolver_corrida", { p_entrega: entregaId })
   if (error) return { ok: false, erro: error.message }
-
-  await supabase.from("couriers").update({ availability: "online" }).eq("id", entregadorId)
 
   revalidatePath("/entregas")
   return { ok: true }

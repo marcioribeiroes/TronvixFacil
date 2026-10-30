@@ -169,6 +169,21 @@ begin
   get diagnostics n = row_count;
   reset role;
   perform pg_temp.conferir(n = 1, 'quem esta no raio aceita');
+
+  -- E consegue devolver: "nao vou conseguir" volta a corrida para a fila
+  -- (devolver_corrida, 20261030110000 - por UPDATE direto o autonomo era
+  -- recusado).
+  update deliveries set status = 'heading_to_restaurant'
+   where order_id = 'eeeeeeee-0000-0000-0000-000000000001';
+  perform set_config('request.jwt.claim.sub', '31111111-1111-1111-1111-111111111111', true);
+  set local role authenticated;
+  perform devolver_corrida((select id from deliveries
+                             where order_id = 'eeeeeeee-0000-0000-0000-000000000001'));
+  reset role;
+  perform pg_temp.conferir(
+    (select status = 'searching_courier' and courier_id is null from deliveries
+                where order_id = 'eeeeeeee-0000-0000-0000-000000000001'),
+    'quem aceitou consegue devolver a corrida, e ela volta para a fila');
 end;
 $$;
 

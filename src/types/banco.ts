@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 46   Enums: 15   Funcoes: 47
+// Tabelas: 46   Enums: 15   Funcoes: 48
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -2701,6 +2701,12 @@ export interface Database {
           p_observacao?: string
         }
         Returns: number
+      }
+      devolver_corrida: {
+        Args: {
+          p_entrega: string
+        }
+        Returns: undefined
       }
       editar_pedido: {
         Args: {

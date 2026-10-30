@@ -386,17 +386,12 @@ class Corridas {
 
   /// Desistir devolve a corrida à fila. O gatilho do banco limpa o entregador
   /// da linha — está escrito lá, em `app.guard_delivery_status`.
+  /// Devolve a corrida para a fila. Pelo banco (`devolver_corrida`), e nao
+  /// por UPDATE direto: o autônomo deixava de enxergar a corrida no instante
+  /// em que ela voltava para a espera da loja, e o banco recusava a devolução.
   static Future<void> desistir(String entregaId, String entregadorId) =>
-      executar(() async {
-        await banco
-            .from('deliveries')
-            .update({'status': StatusDaEntrega.procurandoEntregador.noBanco})
-            .eq('id', entregaId);
-        await banco
-            .from('couriers')
-            .update({'availability': DisponibilidadeDoEntregador.online.noBanco})
-            .eq('id', entregadorId);
-      });
+      executar(() =>
+          banco.rpc('devolver_corrida', params: {'p_entrega': entregaId}));
 
   /// Publica onde o entregador está.
   ///
