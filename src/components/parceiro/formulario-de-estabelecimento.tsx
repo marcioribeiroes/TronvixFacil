@@ -132,13 +132,14 @@ export function FormularioDeEstabelecimento() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="documento">CNPJ</Label>
+            <Label htmlFor="documento">CPF ou CNPJ</Label>
             <Input
               id="documento"
               inputMode="numeric"
               value={documento}
               onChange={(e) => setDocumento(e.target.value)}
-              placeholder="00.000.000/0000-00"
+              placeholder="CPF ou CNPJ, só números"
+              aria-invalid={ruim("documento")}
             />
           </div>
 

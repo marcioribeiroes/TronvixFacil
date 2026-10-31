@@ -49,6 +49,14 @@ export async function cadastrarEstabelecimento(dados: {
   if (telefone.length < 10 || telefone.length > 13) {
     return { ok: false, erro: "Informe DDD e número.", campo: "telefone" }
   }
+  const documento = (dados.documento ?? "").replace(/\D/g, "")
+  if (documento !== "" && documento.length !== 11 && documento.length !== 14) {
+    return {
+      ok: false,
+      erro: "Documento incompleto: o CPF tem 11 dígitos e o CNPJ, 14. Pode deixar em branco.",
+      campo: "documento",
+    }
+  }
   for (const [campo, valor, rotulo] of [
     ["rua", dados.rua, "a rua"],
     ["numero", dados.numero, "o número"],
@@ -70,7 +78,7 @@ export async function cadastrarEstabelecimento(dados: {
     p_estado: dados.estado,
     p_cep: dados.cep || undefined,
     p_complemento: dados.complemento || undefined,
-    p_documento: dados.documento || undefined,
+    p_documento: documento || undefined,
     p_descricao: dados.descricao || undefined,
     p_email: dados.email || undefined,
   })
