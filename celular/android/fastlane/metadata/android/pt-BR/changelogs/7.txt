@@ -1,0 +1,2 @@
+- Pedido aceito pode ir direto para "Pronto", sem passar pelo preparo.
+- O entregador volta a conseguir devolver uma corrida que não vai fazer.

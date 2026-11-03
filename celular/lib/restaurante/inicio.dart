@@ -326,6 +326,26 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
                     ),
                 ],
               ),
+              // Pedido que fica pronto sem preparo (bebida, sobremesa da
+              // vitrine) nao precisa passar por "em preparo". Linha propria:
+              // os dois botoes lado a lado nao cabem num celular estreito.
+              if (p.status == StatusDoPedido.confirmado)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        textStyle: const TextStyle(
+                            fontSize: 13.5, fontWeight: FontWeight.w700),
+                      ),
+                      onPressed: () => _avancar(p, StatusDoPedido.pronto),
+                      child: Text(Balcao.rotuloDoPasso(StatusDoPedido.pronto)),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -333,8 +353,8 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
     );
   }
 
-  Future<void> _avancar(Pedido p) async {
-    final destino = Balcao.proximoPasso(p);
+  Future<void> _avancar(Pedido p, [StatusDoPedido? para]) async {
+    final destino = para ?? Balcao.proximoPasso(p);
     if (destino == null) return;
     try {
       await Balcao.avancar(p, destino);
