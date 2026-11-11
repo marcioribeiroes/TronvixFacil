@@ -175,6 +175,45 @@ export async function receberPagamento(id: string, forma: string): Promise<Resul
   return { ok: true }
 }
 
+const schemaDaParte = z.object({
+  id: z.uuid(),
+  forma: z.enum(FORMAS_DE_PAGAMENTO),
+  valorCents: z.number().int().positive(),
+})
+
+/**
+ * Receber uma parte da conta: a mesa que divide, cada um pagando a sua.
+ *
+ * Pode repetir a mesma parte - cinquenta e cinquenta em dinheiro sao dois
+ * recebimentos, nao um duplicado. O banco (`receber_parte`) nao deixa passar
+ * do que falta e marca o pedido como pago quando as partes fecham o total.
+ */
+export async function receberParte(
+  id: string,
+  forma: string,
+  valorCents: number,
+): Promise<ResultadoDaAcao> {
+  await exigirVinculo()
+
+  const entrada = schemaDaParte.safeParse({ id, forma, valorCents })
+  if (!entrada.success) {
+    return { ok: false, erro: "Diga quanto o cliente pagou e de que forma." }
+  }
+
+  const supabase = await criarClienteDoServidor()
+  const { error } = await supabase.rpc("receber_parte", {
+    p_pedido: entrada.data.id,
+    p_forma: entrada.data.forma,
+    p_valor_cents: entrada.data.valorCents,
+  })
+
+  if (error) return { ok: false, erro: error.message }
+
+  revalidatePath("/painel/pedidos")
+  revalidatePath("/painel/caixa")
+  return { ok: true }
+}
+
 /**
  * Mudar quantidades, tirar e acrescentar itens num pedido ainda aberto.
  *

@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 46   Enums: 15   Funcoes: 48
+// Tabelas: 47   Enums: 15   Funcoes: 49
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -1637,6 +1637,71 @@ export interface Database {
           }
         ]
       }
+      payment_receipts: {
+        Row: {
+          id: string
+          payment_id: string
+          order_id: string
+          restaurant_id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          amount_cents: number
+          received_at: string
+          received_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          payment_id: string
+          order_id: string
+          restaurant_id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          amount_cents: number
+          received_at?: string
+          received_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          payment_id?: string
+          order_id?: string
+          restaurant_id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          amount_cents?: number
+          received_at?: string
+          received_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_receipts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_received_by_fkey"
+            columns: ["received_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       payments: {
         Row: {
           id: string
@@ -2833,6 +2898,14 @@ export interface Database {
           p_forma: Database["public"]["Enums"]["payment_method"]
         }
         Returns: undefined
+      }
+      receber_parte: {
+        Args: {
+          p_pedido: string
+          p_forma: Database["public"]["Enums"]["payment_method"]
+          p_valor_cents: number
+        }
+        Returns: number
       }
       registrar_aparelho: {
         Args: {

@@ -158,6 +158,114 @@ begin
 end;
 $$;
 
+-- -----------------------------------------------------------------------------
+-- A conta dividida: cada um paga a sua parte
+-- -----------------------------------------------------------------------------
+do $$
+declare v_id uuid; v_p payments; v_falta bigint; v_mov jsonb; v_linha jsonb;
+begin
+  v_id := pg_temp.pedido();  -- 30,00 em dinheiro
+  perform pg_temp.virar('11111111-1111-1111-1111-111111111111');
+
+  v_falta := receber_parte(v_id, 'cash', 1500);
+  perform pg_temp.conferir(v_falta = 1500, 'metade recebida, a outra metade ainda falta');
+  select * into v_p from payments where order_id = v_id;
+  perform pg_temp.conferir(v_p.status = 'pending', 'com parte faltando, o pagamento nao fica pago');
+
+  v_mov := movimento_do_caixa('aaaaaaaa-0000-0000-0000-000000000001');
+  select l into v_linha from jsonb_array_elements(v_mov -> 'a_receber') l
+   where l ->> 'pedido_id' = v_id::text;
+  perform pg_temp.conferir((v_linha ->> 'valor_cents')::bigint = 1500
+      and (v_linha ->> 'recebido_cents')::bigint = 1500
+      and (v_linha ->> 'total_cents')::bigint = 3000,
+    'o caixa mostra o que falta, o que ja entrou e o total');
+
+  -- A mesma parte, de novo: e o segundo da mesa, nao um engano.
+  v_falta := receber_parte(v_id, 'cash', 1500);
+  perform pg_temp.conferir(v_falta = 0, 'a segunda parte igual quita a conta');
+  select * into v_p from payments where order_id = v_id;
+  perform pg_temp.conferir(v_p.status = 'paid' and v_p.paid_at is not null,
+    'com as partes somando o total, o pagamento fica pago');
+  perform pg_temp.conferir(
+    (select count(*) from payment_receipts where order_id = v_id) = 2,
+    'e as duas partes ficam registradas, cada uma na sua linha');
+
+  perform pg_temp.deve_falhar(
+    format($q$select receber_parte('%s', 'cash', 100)$q$, v_id),
+    'receber mais uma parte de conta ja quitada');
+end;
+$$;
+
+do $$
+declare v_id uuid; v_p payments;
+begin
+  v_id := pg_temp.pedido();
+  perform pg_temp.virar('11111111-1111-1111-1111-111111111111');
+
+  perform pg_temp.deve_falhar(
+    format($q$select receber_parte('%s', 'cash', 3001)$q$, v_id),
+    'parte maior do que a conta');
+  perform pg_temp.deve_falhar(
+    format($q$select receber_parte('%s', 'cash', 0)$q$, v_id),
+    'parte de zero');
+
+  -- Formas diferentes: dez em dinheiro, vinte no debito.
+  perform receber_parte(v_id, 'cash', 1000);
+  perform receber_parte(v_id, 'debit_card', 2000);
+  select * into v_p from payments where order_id = v_id;
+  perform pg_temp.conferir(v_p.status = 'paid' and v_p.method = 'debit_card',
+    'pago em duas formas, o pagamento resume pela maior parte');
+  perform pg_temp.conferir(
+    (select sum(amount_cents) from payment_receipts where order_id = v_id and method = 'cash') = 1000,
+    'e o dinheiro fica separado do cartao, parte por parte');
+end;
+$$;
+
+do $$
+declare v_id uuid; v_p payments;
+begin
+  v_id := pg_temp.pedido();
+  perform pg_temp.virar('11111111-1111-1111-1111-111111111111');
+
+  -- Receber tudo depois de uma parte: recebe so o que falta.
+  perform receber_parte(v_id, 'cash', 1000);
+  perform receber_pagamento(v_id, 'credit_card');
+  select * into v_p from payments where order_id = v_id;
+  perform pg_temp.conferir(v_p.status = 'paid', 'receber o resto quita a conta');
+  perform pg_temp.conferir(
+    (select amount_cents from payment_receipts where order_id = v_id and method = 'credit_card') = 2000,
+    'e o resto e so o que faltava, nao o total de novo');
+end;
+$$;
+
+do $$
+declare v_id uuid;
+begin
+  v_id := pg_temp.pedido();
+  perform pg_temp.virar('11111111-1111-1111-1111-111111111111');
+  perform receber_parte(v_id, 'cash', 2000);
+
+  -- Total abaixo do que ja esta na gaveta: o caixa ficaria com dinheiro sem
+  -- pedido para explicar.
+  perform pg_temp.deve_falhar(
+    format($q$update payments set amount_cents = 1500 where order_id = '%s'$q$, v_id),
+    'total do pedido abaixo do que ja foi recebido');
+
+  perform pg_temp.deve_falhar(
+    format($q$set local role authenticated; insert into payment_receipts
+      (payment_id, order_id, restaurant_id, method, amount_cents)
+      select id, order_id, 'aaaaaaaa-0000-0000-0000-000000000001', 'cash', 1000
+      from payments where order_id = '%s'$q$, v_id),
+    'parte inserida direto na tabela');
+  reset role;
+
+  perform pg_temp.virar('33333333-3333-3333-3333-333333333333');
+  perform pg_temp.deve_falhar(
+    format($q$select receber_parte('%s', 'cash', 1000)$q$, v_id),
+    'um estranho recebendo parte por uma loja que nao e dele');
+end;
+$$;
+
 -- =============================================================================
 -- Fundo de caixa e sangria
 -- =============================================================================
@@ -170,6 +278,7 @@ values ('aaaaaaaa-0000-0000-0000-000000000001', '44444444-4444-4444-4444-4444444
 -- Os testes acima receberam pedidos em dinheiro. Para o saldo partir do zero,
 -- os recebimentos ficam num dia que nao e hoje.
 update payments set paid_at = now() - interval '3 days' where status = 'paid';
+update payment_receipts set received_at = now() - interval '3 days';
 
 do $$
 declare

@@ -31,7 +31,13 @@ export type Lancamento = {
   cancelado_por: string | null
 }
 
+/**
+ * Uma entrada no caixa. A mesa que paga em duas vezes vira duas: `id` e o da
+ * parte (ou o do pagamento, quando ele foi pago sem partes - pelo site, ou
+ * antes de existir parte).
+ */
 export type Recebimento = {
+  id: string
   pedido_id: string
   numero: number
   cliente: string
@@ -43,7 +49,12 @@ export type Recebimento = {
   pago_em: string
 }
 
-export type AReceber = Omit<Recebimento, "momento" | "pago_em">
+export type AReceber = Omit<Recebimento, "id" | "momento" | "pago_em"> & {
+  /** O total do pedido. `valor_cents` e o que ainda falta dele. */
+  total_cents: number
+  /** O que ja entrou, em partes. */
+  recebido_cents: number
+}
 
 export type MovimentoDoCaixa = {
   /** AAAA-MM-DD, no fuso da loja. */

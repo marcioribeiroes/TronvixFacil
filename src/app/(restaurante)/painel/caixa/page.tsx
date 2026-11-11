@@ -23,6 +23,7 @@ import {
   lerMovimento,
   resumir,
 } from "@/modules/caixa/movimento"
+import { diaDeHoje, diaPorExtenso, diaValido } from "@/modules/pedidos/dia"
 import { ROTULO_DO_TIPO, type TipoDeEntrega } from "@/modules/pedidos/maquina-de-estados"
 
 export const metadata: Metadata = { title: "Caixa" }
@@ -52,13 +53,17 @@ type Linha = {
  * gaveta. Embaixo, de onde ele veio — fundo, cada recebimento, cada sangria —,
  * para que a diferença, quando houver, se ache olhando a lista.
  */
-export default async function PaginaDoCaixa() {
+export default async function PaginaDoCaixa({ searchParams }: PageProps<"/painel/caixa">) {
   const { vinculo } = await exigirVinculo()
   const ehGestao = vinculo.cargo === "owner" || vinculo.cargo === "manager"
+  const parametros = await searchParams
+  const pedido = diaValido(parametros.dia) ? parametros.dia : undefined
 
-  const movimento = await lerMovimento(vinculo.restauranteId)
+  // O dia e decidido no banco, no fuso da loja: sem `dia`, vem o de hoje.
+  const movimento = await lerMovimento(vinculo.restauranteId, pedido)
   const resumo = resumir(movimento)
   const fuso = movimento.fuso
+  const hoje = movimento.hoje
 
   const fundo = movimento.lancamentos.find((l) => l.tipo === "opening_float" && !l.cancelado_em)
 
@@ -75,7 +80,8 @@ export default async function PaginaDoCaixa() {
     ...movimento.recebimentos.map((r) => {
       const forma = formaDePagamento(r.forma)
       return {
-        chave: `${r.pedido_id}-recebido`,
+        // Uma linha por parte: a mesa que pagou em duas vezes aparece duas.
+        chave: `recebido-${r.id}`,
         quando: r.pago_em,
         descricao: `Pedido nº ${r.numero}`,
         detalhe: `${r.cliente} · ${forma ? ROTULO_DA_FORMA[forma] : r.forma}${
@@ -95,14 +101,41 @@ export default async function PaginaDoCaixa() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Caixa</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Fundo, recebimentos e sangrias de hoje. O que é recebido na fila aparece aqui sozinho.
+            {hoje
+              ? "Fundo, recebimentos e sangrias de hoje. O que é recebido na fila aparece aqui sozinho."
+              : `Fundo, recebimentos e sangrias de ${diaPorExtenso(movimento.dia)}.`}
           </p>
         </div>
-        <Button variant="outline" render={<Link href="/painel/caixa/relatorio" />}>
+        <Button
+          variant="outline"
+          render={<Link href={`/painel/caixa/relatorio?dia=${movimento.dia}`} />}
+        >
           <FileText className="size-4" aria-hidden="true" />
           Relatório do caixa
         </Button>
       </div>
+
+      {/* Formulario GET, como o do relatorio: o dia vai para a URL. */}
+      <form className="flex flex-wrap items-end gap-2">
+        <label className="text-sm">
+          <span className="block text-xs text-muted-foreground">Dia</span>
+          <input
+            type="date"
+            name="dia"
+            defaultValue={movimento.dia}
+            max={diaDeHoje(fuso)}
+            className="h-9 rounded-lg border bg-background px-2 text-sm"
+          />
+        </label>
+        <Button type="submit" variant="outline">
+          Ver
+        </Button>
+        {hoje ? null : (
+          <Button variant="ghost" render={<Link href="/painel/caixa" />}>
+            Voltar para hoje
+          </Button>
+        )}
+      </form>
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <div className="col-span-2 rounded-xl border bg-marca-suave p-4 sm:col-span-1">
@@ -136,6 +169,8 @@ export default async function PaginaDoCaixa() {
         ))}
       </dl>
 
+      {/* Fundo e sangria sao lancamentos do caixa aberto agora. Num dia que ja
+          passou, so se olha. */}
       <div className="grid gap-4 lg:grid-cols-2">
         {fundo ? (
           <div className="rounded-xl border bg-card p-4">
@@ -146,10 +181,14 @@ export default async function PaginaDoCaixa() {
               {fundo.feito_por ? ` por ${fundo.feito_por}` : ""}.
             </p>
           </div>
-        ) : (
+        ) : hoje ? (
           <RegistrarFundo />
+        ) : (
+          <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            Nenhum fundo de caixa registrado neste dia.
+          </p>
         )}
-        <RegistrarSangria />
+        {hoje ? <RegistrarSangria /> : null}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -159,7 +198,7 @@ export default async function PaginaDoCaixa() {
           </h2>
           {movimento.a_receber.length === 0 ? (
             <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Nada pendente. Todo pedido de hoje já foi recebido.
+              Nada pendente. Todo pedido {hoje ? "de hoje" : "deste dia"} já foi recebido.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -173,7 +212,8 @@ export default async function PaginaDoCaixa() {
                   <ReceberPagamento
                     pedidoId={r.pedido_id}
                     numero={r.numero}
-                    totalCents={r.valor_cents}
+                    faltaCents={r.valor_cents}
+                    recebidoCents={r.recebido_cents}
                     formaPedida={r.forma}
                   />
                 </li>
@@ -188,7 +228,7 @@ export default async function PaginaDoCaixa() {
           </h2>
           {linhas.length === 0 ? (
             <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              Nada lançado hoje. Comece pelo fundo de caixa.
+              {hoje ? "Nada lançado hoje. Comece pelo fundo de caixa." : "Nada lançado neste dia."}
             </p>
           ) : (
             <ul className="divide-y rounded-xl border bg-card">

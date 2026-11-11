@@ -54,7 +54,14 @@ export type PedidoDaFila = {
     notes: string | null
     created_at: string
   }[]
-  payments: { method: string; timing: string; status: string }[]
+  payments: {
+    method: string
+    timing: string
+    status: string
+    amount_cents: number
+    /** As partes ja recebidas: a mesa que divide a conta. */
+    payment_receipts: { amount_cents: number }[]
+  }[]
   /**
    * A entrega deste pedido. Vem como objeto, não lista: `deliveries.order_id`
    * é único, então o PostgREST trata a relação como um-para-um. Nulo em
@@ -119,6 +126,11 @@ function quando(iso: string) {
 export function FilaDePedidos({
   pedidos,
   cancelados,
+  entregues,
+  vazio = {
+    titulo: "Nenhum pedido em aberto",
+    detalhe: "Quando entrar um pedido, ele aparece aqui sozinho.",
+  },
   restauranteId,
   chavePublicaDePush,
   preparoMedioEmMinutos,
@@ -126,6 +138,10 @@ export function FilaDePedidos({
   pedidos: PedidoDaFila[]
   /** Cancelados nos ultimos vinte minutos. Sumir em silencio e pior. */
   cancelados: PedidoDaFila[]
+  /** Entregues hoje. Ficam fora da contagem de espera e do sino. */
+  entregues: PedidoDaFila[]
+  /** O que dizer quando nao ha nada no quadro. Muda quando se olha outro dia. */
+  vazio?: { titulo: string; detalhe: string }
   restauranteId: string
   chavePublicaDePush: string
   /** Palpite inicial da previsao que vai para o entregador. */
@@ -308,6 +324,18 @@ export function FilaDePedidos({
         },
         () => router.refresh(),
       )
+      // A parte recebida da conta dividida: o pedido nao muda, entao sem isto
+      // a outra tela continuava mostrando a conta inteira a receber.
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "payment_receipts",
+          filter: `restaurant_id=eq.${restauranteId}`,
+        },
+        () => router.refresh(),
+      )
       .subscribe()
 
     return () => {
@@ -339,16 +367,16 @@ export function FilaDePedidos({
     />
   )
 
-  if (pedidos.length === 0) {
+  // Fila vazia mas com entregues ou cancelados no dia: o quadro continua, para
+  // eles seguirem à mão.
+  if (pedidos.length === 0 && entregues.length === 0 && cancelados.length === 0) {
     return (
       <div className="space-y-4">
         {aviso}
         <div className="rounded-xl border border-dashed p-12 text-center">
           <Clock className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-          <p className="mt-3 font-semibold">Nenhum pedido em aberto</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Quando entrar um pedido, ele aparece aqui sozinho.
-          </p>
+          <p className="mt-3 font-semibold">{vazio.titulo}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{vazio.detalhe}</p>
         </div>
       </div>
     )
@@ -358,7 +386,10 @@ export function FilaDePedidos({
     <div className="space-y-4">
       {aviso}
       <Cancelamentos pedidos={cancelados} />
-      <Quadro pedidos={pedidos} preparoMedioEmMinutos={preparoMedioEmMinutos} />
+      <Quadro
+        pedidos={[...pedidos, ...entregues]}
+        preparoMedioEmMinutos={preparoMedioEmMinutos}
+      />
     </div>
   )
 }
@@ -407,6 +438,15 @@ const COLUNAS = [
     titulo: "Saiu",
     detalhe: "na rua ou na mesa",
     situacoes: ["out_for_delivery"] as SituacaoDoPedido[],
+    urgente: false,
+  },
+  // A ultima, e so de consulta: nada mais a fazer com estes pedidos. Existe
+  // para o balcao responder "ja chegou?" sem abrir relatorio.
+  {
+    chave: "entregue",
+    titulo: "Entregues",
+    detalhe: "o cliente já recebeu",
+    situacoes: ["delivered"] as SituacaoDoPedido[],
     urgente: false,
   },
 ] as const
@@ -548,6 +588,12 @@ function CartaoDoPedido({
     Date.parse(i.created_at) > Date.parse(p.created_at)
   // Pago na entrega e ja recebido: o dinheiro esta no caixa, nao falta nada.
   const recebido = naEntrega && pagamento.status === "paid"
+  // A conta dividida: parte ja entrou, parte ainda falta.
+  const jaRecebido = (pagamento?.payment_receipts ?? []).reduce(
+    (soma, r) => soma + r.amount_cents,
+    0,
+  )
+  const falta = (pagamento?.amount_cents ?? p.total_cents) - jaRecebido
 
   // Pix pelo site, ainda não confirmado. É o único caso em que o pedido está
   // parado esperando a loja, e não a cozinha.
@@ -716,6 +762,10 @@ function CartaoDoPedido({
               Recebido · <strong>{formatarReais(p.total_cents)}</strong> em{" "}
               {FORMA[pagamento.method] ?? pagamento.method}
             </>
+          ) : naEntrega && jaRecebido > 0 ? (
+            <>
+              Falta <strong>{formatarReais(falta)}</strong> de {formatarReais(p.total_cents)}
+            </>
           ) : naEntrega ? (
             <>
               A receber {tipo === "dine_in" ? "na mesa " : ""}·{" "}
@@ -796,7 +846,8 @@ function CartaoDoPedido({
           <ReceberPagamento
             pedidoId={p.id}
             numero={p.number}
-            totalCents={p.total_cents}
+            faltaCents={falta}
+            recebidoCents={jaRecebido}
             formaPedida={pagamento.method}
           />
         </div>

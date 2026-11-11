@@ -130,7 +130,7 @@ export default async function RelatorioDoCaixa({
             ))}
             <tr className="font-bold">
               <td className="py-2">
-                Total recebido · {movimento.recebimentos.length} pedido(s)
+                Total recebido · {movimento.recebimentos.length} recebimento(s)
               </td>
               <td className="py-2 text-right tabular-nums">{formatarReais(resumo.recebido)}</td>
             </tr>
@@ -210,7 +210,7 @@ export default async function RelatorioDoCaixa({
               {movimento.recebimentos.map((r) => {
                 const forma = formaDePagamento(r.forma)
                 return (
-                  <tr key={r.pedido_id} className="print:break-inside-avoid">
+                  <tr key={r.id} className="print:break-inside-avoid">
                     <td className="py-1.5 tabular-nums">{hora(r.pago_em, fuso)}</td>
                     <td className="py-1.5">
                       nº {r.numero} · {r.cliente}

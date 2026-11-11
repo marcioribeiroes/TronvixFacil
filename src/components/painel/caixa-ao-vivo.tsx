@@ -8,8 +8,8 @@ import { criarClienteDoNavegador } from "@/lib/supabase/navegador"
 /**
  * Mantem o caixa em dia sem ninguem recarregar a pagina.
  *
- * Escuta `payments` (o recebimento feito no celular, em outra aba, por outro
- * atendente) e `orders` (pedido novo a receber, pedido cancelado que sai da
+ * Escuta `payments` e `payment_receipts` (o recebimento feito no celular, em
+ * outra aba, por outro atendente - inteiro ou em parte) e `orders` (pedido novo a receber, pedido cancelado que sai da
  * lista). Como na fila, nao remenda estado: pede ao servidor a tela de novo, e
  * a RLS continua decidindo o que aparece.
  */
@@ -24,6 +24,18 @@ export function CaixaAoVivo({ restauranteId }: { restauranteId: string }) {
       // pagamentos de pedidos que esta pessoa pode ver.
       .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () =>
         router.refresh(),
+      )
+      // A parte da conta dividida: o pagamento so muda quando ela fecha, entao
+      // sem isto a primeira metade nao aparecia.
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "payment_receipts",
+          filter: `restaurant_id=eq.${restauranteId}`,
+        },
+        () => router.refresh(),
       )
       .on(
         "postgres_changes",
