@@ -1,0 +1,2 @@
+- A conta pode ser recebida em partes, em formas diferentes: a mesa que divide paga cada um a sua.
+- O pedido e o caixa mostram quanto já foi recebido e quanto falta.
