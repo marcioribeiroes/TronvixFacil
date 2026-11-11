@@ -3,7 +3,7 @@
 // Origem: o schema real do Postgres, lido por scripts/gerar-tipos.mjs.
 // Para atualizar depois de uma migracao:  npm run db:tipos
 //
-// Tabelas: 47   Enums: 15   Funcoes: 49
+// Tabelas: 48   Enums: 15   Funcoes: 49
 
 export type Json = string | number | boolean | null | { [chave: string]: Json | undefined } | Json[]
 
@@ -2067,6 +2067,72 @@ export interface Database {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      restaurant_customers: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          phone: string | null
+          address_street: string | null
+          address_number: string | null
+          address_complement: string | null
+          address_district: string | null
+          address_city: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          name: string
+          phone?: string | null
+          address_street?: string | null
+          address_number?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_city?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          name?: string
+          phone?: string | null
+          address_street?: string | null
+          address_number?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_city?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_customers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_customers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           }
         ]

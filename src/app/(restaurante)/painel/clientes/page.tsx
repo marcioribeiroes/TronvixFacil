@@ -1,5 +1,9 @@
 import type { Metadata } from "next"
 
+import {
+  CadernoDeClientes,
+  type ClienteDoCaderno,
+} from "@/components/painel/caderno-de-clientes"
 import { formatarReais } from "@/lib/dinheiro"
 import { criarClienteDoServidor } from "@/lib/supabase/servidor"
 import { exigirGestao } from "@/modules/auth/sessao"
@@ -7,12 +11,15 @@ import { exigirGestao } from "@/modules/auth/sessao"
 export const metadata: Metadata = { title: "Clientes" }
 
 /**
- * Quem ja comprou aqui.
+ * Os clientes da loja, de dois jeitos.
  *
- * Nao ha cadastro de cliente no painel, de proposito: o cliente e dono do
- * proprio cadastro, e a loja o conhece pelos pedidos. O que esta tela mostra e
- * o que a loja aprendeu vendendo - quem volta, quanto gasta, ha quanto tempo
- * sumiu.
+ * Em cima, o caderno: o freguês do telefone e do balcão, cadastrado pela
+ * própria loja (`restaurant_customers`). Não é a conta do cliente no
+ * aplicativo - essa continua sendo dele.
+ *
+ * Embaixo, o que a loja aprendeu vendendo - quem volta, quanto gasta, há quanto
+ * tempo sumiu -, tirado dos pedidos. O cliente cadastrado se encontra com os
+ * pedidos dele pelo telefone.
  *
  * A RLS so deixa esta loja ver os pedidos dela; o agrupamento e feito aqui
  * porque e sobre esse recorte, e nao sobre a base inteira de clientes.
@@ -35,12 +42,22 @@ export default async function ClientesDoRestaurante() {
   const { vinculo } = await exigirGestao()
   const supabase = await criarClienteDoServidor()
 
-  const { data: pedidos } = await supabase
-    .from("orders")
-    .select("customer_id, customer_name, customer_phone, total_cents, status, created_at, address_district")
-    .eq("restaurant_id", vinculo.restauranteId)
-    .not("status", "in", "(cancelled,rejected)")
-    .order("created_at", { ascending: false })
+  const [{ data: pedidos }, { data: cadastrados }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("customer_id, customer_name, customer_phone, total_cents, status, created_at, address_district")
+      .eq("restaurant_id", vinculo.restauranteId)
+      .not("status", "in", "(cancelled,rejected)")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("restaurant_customers")
+      .select(
+        "id, name, phone, address_street, address_number, address_complement, address_district, address_city, notes",
+      )
+      .eq("restaurant_id", vinculo.restauranteId)
+      .is("deleted_at", null)
+      .order("name"),
+  ])
 
   const porCliente = new Map<string, Cliente>()
   const porBairro = new Map<string, number>()
@@ -68,6 +85,38 @@ export default async function ClientesDoRestaurante() {
     }
   }
 
+  // Os pedidos de cada telefone, para o caderno mostrar o que o cliente
+  // cadastrado ja comprou. Telefone so com digitos dos dois lados: o do
+  // aplicativo pode vir de outro jeito.
+  const porTelefone = new Map<string, { pedidos: number; total: number; ultimo: string }>()
+  for (const p of pedidos ?? []) {
+    const fone = (p.customer_phone ?? "").replace(/\D/g, "")
+    if (!fone) continue
+    const atual = porTelefone.get(fone) ?? { pedidos: 0, total: 0, ultimo: p.created_at }
+    atual.pedidos += 1
+    atual.total += p.total_cents
+    if (p.created_at > atual.ultimo) atual.ultimo = p.created_at
+    porTelefone.set(fone, atual)
+  }
+
+  const caderno: ClienteDoCaderno[] = (cadastrados ?? []).map((c) => {
+    const historico = c.phone ? porTelefone.get(c.phone) : undefined
+    return {
+      id: c.id,
+      nome: c.name,
+      telefone: c.phone,
+      rua: c.address_street,
+      numero: c.address_number,
+      complemento: c.address_complement,
+      bairro: c.address_district,
+      cidade: c.address_city,
+      observacao: c.notes,
+      pedidos: historico?.pedidos ?? 0,
+      totalCents: historico?.total ?? 0,
+      diasDesdeOUltimo: historico ? diasDesde(historico.ultimo) : null,
+    }
+  })
+
   const clientes = [...porCliente.values()].sort((a, b) => b.total - a.total)
   const recorrentes = clientes.filter((c) => c.pedidos > 1)
   const sumidos = clientes.filter((c) => c.pedidos > 1 && diasDesde(c.ultimo) >= 30)
@@ -77,9 +126,11 @@ export default async function ClientesDoRestaurante() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Quem já pediu aqui, pelos pedidos da própria loja.
+          Os clientes que a loja cadastrou, e quem já pediu aqui, pelos pedidos da própria loja.
         </p>
       </div>
+
+      <CadernoDeClientes clientes={caderno} />
 
       <dl className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border bg-card p-4">
