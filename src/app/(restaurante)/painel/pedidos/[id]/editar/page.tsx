@@ -60,7 +60,7 @@ export default async function PaginaDeEditarPedido({
     )
   }
 
-  const { secoes, grupos } = await carregarCardapio(vinculo.restauranteId)
+  const { secoes, grupos } = await carregarCardapio(vinculo.restauranteId, { doBalcao: true })
 
   const itens = [...pedido.order_items]
     .sort((a, b) => a.created_at.localeCompare(b.created_at))

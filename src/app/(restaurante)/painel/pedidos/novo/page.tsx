@@ -18,7 +18,7 @@ export default async function PaginaDeNovoPedido() {
   const supabase = await criarClienteDoServidor()
 
   const [{ secoes, grupos }, { data: mesas }, { data: loja }] = await Promise.all([
-    carregarCardapio(vinculo.restauranteId),
+    carregarCardapio(vinculo.restauranteId, { doBalcao: true }),
     supabase
       .from("restaurant_tables")
       .select("id, label")

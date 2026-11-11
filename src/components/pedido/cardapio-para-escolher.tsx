@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Minus, Plus } from "lucide-react"
+import { Minus, Plus, ScanBarcode, Search } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatarReais } from "@/lib/dinheiro"
+import { produtoCombina, produtoDoCodigo } from "@/modules/cardapio/busca"
 
 /**
  * O cardapio com a escolha do produto: adicionais, observacao e quantidade.
@@ -21,6 +22,8 @@ export type Produto = {
   id: string
   name: string
   description: string | null
+  /** So no cardapio do balcao (`carregarCardapio(..., { doBalcao: true })`). */
+  barcode?: string | null
   image_url: string | null
   price_cents: number
   promo_price_cents: number | null
@@ -78,6 +81,7 @@ export function ListaDoCardapio({
   aoEscolher,
   rotuloDoBotao = "Adicionar",
   bloqueio,
+  comBusca = false,
 }: {
   secoes: Secao[]
   grupos: Grupo[]
@@ -85,12 +89,75 @@ export function ListaDoCardapio({
   rotuloDoBotao?: string
   /** Texto do botao quando nao da para escolher (loja fechada, por exemplo). */
   bloqueio?: string
+  /** Campo de busca por nome, descricao ou codigo de barras. O balcao usa. */
+  comBusca?: boolean
 }) {
   const [escolhido, setEscolhido] = useState<Produto | null>(null)
+  const [busca, setBusca] = useState("")
+
+  const filtradas = busca.trim()
+    ? secoes
+        .map((s) => ({ ...s, produtos: s.produtos.filter((p) => produtoCombina(p, busca)) }))
+        .filter((s) => s.produtos.length > 0)
+    : secoes
+  const achados = filtradas.reduce((soma, s) => soma + s.produtos.length, 0)
+
+  /**
+   * Enter no campo. O leitor de codigo de barras digita o codigo e aperta
+   * Enter sozinho: com um produto so naquele codigo, ele ja abre para
+   * escolher. Com um resultado so na busca de texto, tambem.
+   */
+  function confirmarBusca() {
+    const todos = secoes.flatMap((s) => s.produtos)
+    const unico =
+      produtoDoCodigo(todos, busca) ??
+      (achados === 1 ? filtradas[0].produtos[0] : null)
+    if (!unico) return
+    const esgotado = unico.track_stock && unico.stock_quantity <= 0
+    if (!unico.is_available || esgotado) return
+    setEscolhido(unico)
+    setBusca("")
+  }
 
   return (
     <div className="space-y-8">
-      {secoes.map((s) => (
+      {comBusca ? (
+        <div className="space-y-1.5">
+          <label className="relative block">
+            <span className="sr-only">Procurar produto por nome, descrição ou código de barras</span>
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  confirmarBusca()
+                }
+              }}
+              placeholder="Procurar por nome, descrição ou código de barras"
+              className="h-10 pr-10 pl-9"
+            />
+            <ScanBarcode
+              className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </label>
+          {busca.trim() ? (
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {achados === 0
+                ? "Nenhum produto encontrado."
+                : `${achados} ${achados === 1 ? "produto encontrado — Enter abre" : "produtos encontrados"}`}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {filtradas.map((s) => (
         <section key={s.id}>
           <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
             {s.nome}

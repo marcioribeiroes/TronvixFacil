@@ -12,6 +12,15 @@ import { criarClienteDoServidor } from "@/lib/supabase/servidor"
  */
 export async function carregarCardapio(
   restauranteId: string,
+  {
+    doBalcao = false,
+  }: {
+    /**
+     * Cardapio de quem atende: vem com o codigo de barras, para a busca do
+     * leitor. A vitrine do cliente nao precisa dele, e ele nao vai para la.
+     */
+    doBalcao?: boolean
+  } = {},
 ): Promise<{ secoes: Secao[]; grupos: Grupo[] }> {
   const supabase = await criarClienteDoServidor()
 
@@ -26,7 +35,7 @@ export async function carregarCardapio(
     supabase
       .from("products")
       .select(
-        "id, category_id, name, description, image_url, price_cents, promo_price_cents, promo_starts_at, promo_ends_at, is_available, track_stock, stock_quantity",
+        "id, category_id, name, description, barcode, image_url, price_cents, promo_price_cents, promo_starts_at, promo_ends_at, is_available, track_stock, stock_quantity",
       )
       .eq("restaurant_id", restauranteId)
       .is("deleted_at", null)
@@ -47,7 +56,9 @@ export async function carregarCardapio(
       .map((c) => ({
         id: c.id,
         nome: c.name,
-        produtos: (produtos ?? []).filter((p) => p.category_id === c.id),
+        produtos: (produtos ?? [])
+          .filter((p) => p.category_id === c.id)
+          .map(({ barcode, ...p }) => (doBalcao ? { ...p, barcode } : p)),
       }))
       .filter((s) => s.produtos.length > 0),
     grupos: (grupos ?? []).map((g) => ({

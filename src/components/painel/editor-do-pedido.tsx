@@ -222,6 +222,7 @@ export function EditorDoPedido({
           secoes={secoes}
           grupos={grupos}
           rotuloDoBotao="Pôr no pedido"
+          comBusca
           aoEscolher={async (escolha) => {
             setNovos((atuais) => [...atuais, { ...escolha, chave: Date.now() }])
             return { ok: true }

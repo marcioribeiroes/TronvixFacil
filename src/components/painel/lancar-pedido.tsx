@@ -119,7 +119,11 @@ export function LancarPedido({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-      <section className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+      {/* A coluna do pedido acompanha o cardapio, mas cabe na janela: com
+          muitos itens ela rola por dentro, em vez de crescer por baixo da barra
+          de tarefas do Windows e esconder o botao de lancar. O tamanho segue a
+          janela - redimensionou, a coluna acompanha. */}
+      <section className="space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
         <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Tipo do pedido">
           {TIPOS.map(({ tipo: t, rotulo, Icone }) => (
             <button
@@ -236,7 +240,9 @@ export function LancarPedido({
           ))}
         </ul>
 
-        <div className="space-y-3 rounded-xl border bg-card p-4 text-sm">
+        {/* Pagamento, total e o botao ficam presos no pe da coluna: por mais
+            itens que o pedido tenha, lancar esta sempre a vista. */}
+        <div className="space-y-3 rounded-xl border bg-card p-4 text-sm lg:sticky lg:bottom-0 lg:shadow-[0_-10px_20px_-14px_rgb(0_0_0/0.35)]">
           <div className="flex flex-wrap items-end gap-3">
             <label>
               <span className="block text-xs text-muted-foreground">Pagamento</span>
@@ -291,21 +297,21 @@ export function LancarPedido({
               <dd>{formatarReais(total)}</dd>
             </div>
           </dl>
-        </div>
 
-        {erro ? (
-          <p role="alert" className="text-sm font-medium text-destructive">
-            {erro}
-          </p>
-        ) : null}
+          {erro ? (
+            <p role="alert" className="text-sm font-medium text-destructive">
+              {erro}
+            </p>
+          ) : null}
 
-        <div className="flex gap-2">
-          <Button className="flex-1" onClick={lancar} disabled={enviando || itens.length === 0}>
-            Lançar pedido
-          </Button>
-          <Button variant="outline" onClick={() => router.push("/painel/pedidos")}>
-            Voltar
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={lancar} disabled={enviando || itens.length === 0}>
+              Lançar pedido
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/painel/pedidos")}>
+              Voltar
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -315,6 +321,7 @@ export function LancarPedido({
           secoes={secoes}
           grupos={grupos}
           rotuloDoBotao="Pôr no pedido"
+          comBusca
           aoEscolher={async (escolha) => {
             setItens((atuais) => [...atuais, { ...escolha, chave: Date.now() }])
             return { ok: true }
