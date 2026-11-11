@@ -13,76 +13,210 @@ import '../modelos/modelos.dart';
 import '../sessao.dart';
 import '../tema.dart';
 
-/// Pergunta como o cliente pagou e registra o recebimento.
+/// Pergunta quanto e como o cliente pagou, e registra o recebimento.
 ///
-/// A forma já vem marcada com o que foi escolhido no aplicativo, porque quase
-/// sempre é isso mesmo — mas fica trocável: quem pediu em dinheiro e passou o
-/// cartão tem de entrar no caixa como cartão, senão a gaveta não bate.
+/// O valor já vem com tudo o que falta, porque quase sempre é isso: um
+/// cliente, uma forma, a conta inteira. A mesa que divide troca o valor e
+/// recebe uma parte; a próxima parte — até a mesma, cinquenta e cinquenta —
+/// entra como outro recebimento.
 ///
-/// Devolve true quando recebeu.
+/// A forma já vem marcada com o que foi escolhido no aplicativo, mas fica
+/// trocável: quem pediu em dinheiro e passou o cartão tem de entrar no caixa
+/// como cartão, senão a gaveta não bate.
+///
+/// Devolve true quando recebeu alguma coisa (a conta inteira ou uma parte).
 Future<bool> receberPagamento(
   BuildContext context, {
   required String pedidoId,
   required int numero,
-  required int totalCentavos,
+  required int faltaCentavos,
+  int recebidoCentavos = 0,
   FormaDePagamento? formaPedida,
 }) async {
-  final forma = await showModalBottomSheet<FormaDePagamento>(
+  final escolha = await showModalBottomSheet<(FormaDePagamento, int)>(
     context: context,
     showDragHandle: true,
-    builder: (contexto) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Text(
-              'Receber ${emReais(totalCentavos)} · nº $numero',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Text(
-              'Como o cliente pagou?',
-              style: TextStyle(color: Cores.textoSuave),
-            ),
-          ),
-          for (final f in FormaDePagamento.values)
-            ListTile(
-              leading: Icon(
-                f == formaPedida
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
-                color: Cores.marca,
-              ),
-              title: Text(f.rotulo),
-              subtitle: f == formaPedida
-                  ? const Text('O que o cliente escolheu')
-                  : null,
-              onTap: () => Navigator.pop(contexto, f),
-            ),
-          const SizedBox(height: 8),
-        ],
-      ),
+    // O teclado sobe por cima do campo de valor sem isto.
+    isScrollControlled: true,
+    builder: (_) => _FolhaDeRecebimento(
+      numero: numero,
+      faltaCentavos: faltaCentavos,
+      recebidoCentavos: recebidoCentavos,
+      formaPedida: formaPedida,
     ),
   );
 
-  if (forma == null) return false;
+  if (escolha == null) return false;
+  final (forma, valor) = escolha;
 
   try {
-    await Balcao.receber(pedidoId, forma);
+    final falta = await Balcao.receberParte(pedidoId, forma, valor);
     if (context.mounted) {
       avisar(
         context,
-        'Recebido: ${emReais(totalCentavos)} em ${forma.rotulo.toLowerCase()}.',
+        falta == 0
+            ? 'Recebido: ${emReais(valor)} em ${forma.rotulo.toLowerCase()}. Conta fechada.'
+            : 'Recebido: ${emReais(valor)} em ${forma.rotulo.toLowerCase()}. '
+                'Falta ${emReais(falta)}.',
       );
     }
     return true;
   } catch (e) {
     if (context.mounted) avisar(context, e.toString(), erro: true);
     return false;
+  }
+}
+
+class _FolhaDeRecebimento extends StatefulWidget {
+  const _FolhaDeRecebimento({
+    required this.numero,
+    required this.faltaCentavos,
+    required this.recebidoCentavos,
+    this.formaPedida,
+  });
+
+  final int numero;
+  final int faltaCentavos;
+  final int recebidoCentavos;
+  final FormaDePagamento? formaPedida;
+
+  @override
+  State<_FolhaDeRecebimento> createState() => _FolhaDeRecebimentoState();
+}
+
+class _FolhaDeRecebimentoState extends State<_FolhaDeRecebimento> {
+  late final _valor =
+      TextEditingController(text: emReaisCurto(widget.faltaCentavos));
+  late FormaDePagamento _forma = widget.formaPedida ?? FormaDePagamento.values.first;
+  String? _erro;
+
+  @override
+  void dispose() {
+    _valor.dispose();
+    super.dispose();
+  }
+
+  int? get _centavos => paraCentavos(_valor.text);
+
+  void _confirmar() {
+    final valor = _centavos;
+    final erro = erroDaParte(valor, widget.faltaCentavos);
+    if (erro != null) {
+      setState(() => _erro = erro);
+      return;
+    }
+    Navigator.pop(context, (_forma, valor!));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final valor = _centavos;
+    final tudo = valor == widget.faltaCentavos;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                child: Text(
+                  'Receber · nº ${widget.numero}',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text(
+                  widget.recebidoCentavos > 0
+                      ? 'Já recebido ${emReais(widget.recebidoCentavos)} · '
+                          'falta ${emReais(widget.faltaCentavos)}'
+                      : 'Conta de ${emReais(widget.faltaCentavos)}',
+                  style: const TextStyle(color: Cores.textoSuave),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _valor,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Quanto o cliente pagou',
+                    prefixText: 'R\$ ',
+                    errorText: _erro,
+                  ),
+                  onChanged: (_) => setState(() => _erro = null),
+                  onTap: () => _valor.selection =
+                      TextSelection(baseOffset: 0, extentOffset: _valor.text.length),
+                ),
+              ),
+              // Os atalhos da mesa que divide: a conta toda, ou a metade dela.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Wrap(
+                  spacing: 8,
+                  children: [
+                    ActionChip(
+                      label: Text('Tudo · ${emReais(widget.faltaCentavos)}'),
+                      onPressed: () => setState(() {
+                        _valor.text = emReaisCurto(widget.faltaCentavos);
+                        _erro = null;
+                      }),
+                    ),
+                    if (widget.faltaCentavos >= 2)
+                      ActionChip(
+                        label: Text('Metade · ${emReais(widget.faltaCentavos ~/ 2)}'),
+                        onPressed: () => setState(() {
+                          _valor.text = emReaisCurto(widget.faltaCentavos ~/ 2);
+                          _erro = null;
+                        }),
+                      ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Text(
+                  'Como o cliente pagou?',
+                  style: TextStyle(color: Cores.textoSuave),
+                ),
+              ),
+              for (final f in FormaDePagamento.values)
+                ListTile(
+                  leading: Icon(
+                    f == _forma ? Icons.radio_button_checked : Icons.radio_button_off,
+                    color: Cores.marca,
+                  ),
+                  title: Text(f.rotulo),
+                  subtitle: f == widget.formaPedida
+                      ? const Text('O que o cliente escolheu')
+                      : null,
+                  onTap: () => setState(() => _forma = f),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _confirmar,
+                    child: Text(
+                      tudo
+                          ? 'Receber ${emReais(widget.faltaCentavos)}'
+                          : valor != null && valor > 0
+                              ? 'Receber parte de ${emReais(valor)}'
+                              : 'Receber',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -282,14 +416,19 @@ class _TelaCaixaState extends State<TelaCaixa> {
       'nº ${r.numero} · ${r.cliente}',
       style: const TextStyle(fontWeight: FontWeight.w700),
     ),
-    subtitle: Text('${r.destino} · pediu em ${r.forma.rotulo.toLowerCase()}'),
+    subtitle: Text(
+      r.recebidoCentavos > 0
+          ? '${r.destino} · já recebido ${emReais(r.recebidoCentavos)}'
+          : '${r.destino} · pediu em ${r.forma.rotulo.toLowerCase()}',
+    ),
     trailing: FilledButton(
       onPressed: () async {
         final recebeu = await receberPagamento(
           context,
           pedidoId: r.pedidoId,
           numero: r.numero,
-          totalCentavos: r.valorCentavos,
+          faltaCentavos: r.valorCentavos,
+          recebidoCentavos: r.recebidoCentavos,
           formaPedida: r.forma,
         );
         if (recebeu) _carregar();

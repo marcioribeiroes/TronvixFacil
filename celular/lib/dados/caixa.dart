@@ -66,6 +66,7 @@ class PedidoNoCaixa {
     this.mesa,
     this.pelaInternet = false,
     this.pagoEm,
+    this.recebidoCentavos = 0,
   });
 
   factory PedidoNoCaixa.deMapa(Map<String, dynamic> m) => PedidoNoCaixa(
@@ -80,6 +81,7 @@ class PedidoNoCaixa {
     pagoEm: m['pago_em'] == null
         ? null
         : DateTime.parse(m['pago_em'] as String),
+    recebidoCentavos: ((m['recebido_cents'] as num?) ?? 0).toInt(),
   );
 
   final String pedidoId;
@@ -88,7 +90,11 @@ class PedidoNoCaixa {
   final TipoDeEntrega tipo;
   final String? mesa;
   final FormaDePagamento forma;
+  /// Recebido: o valor da parte. A receber: o que ainda FALTA do pedido.
   final int valorCentavos;
+
+  /// A receber: o que já entrou em partes. Zero no recebido.
+  final int recebidoCentavos;
   final bool pelaInternet;
   final DateTime? pagoEm;
 

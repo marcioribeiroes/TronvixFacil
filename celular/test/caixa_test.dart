@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tronvix_facil/formato.dart';
+import 'package:tronvix_facil/modelos/modelos.dart';
 
 void main() {
   test('entende o valor como se fala', () {
@@ -30,5 +31,49 @@ void main() {
     expect(paraCentavos('10,999'), isNull);
     expect(paraCentavos('1,2,3'), isNull);
     expect(paraCentavos('-10'), isNull);
+  });
+
+  group('conta dividida', () {
+    test('a parte tem de ser mais que zero e caber no que falta', () {
+      expect(erroDaParte(5000, 10000), isNull);
+      expect(erroDaParte(10000, 10000), isNull);
+      expect(erroDaParte(10001, 10000), isNotNull);
+      expect(erroDaParte(0, 10000), isNotNull);
+      expect(erroDaParte(null, 10000), isNotNull);
+    });
+
+    test('o pagamento soma as partes e diz quanto falta', () {
+      Map<String, dynamic> pagamento(List<int> partes) => {
+            'id': 'p1',
+            'method': 'cash',
+            'timing': 'on_delivery',
+            'status': 'pending',
+            'amount_cents': 10000,
+            'payment_receipts': [
+              for (final v in partes) {'amount_cents': v},
+            ],
+          };
+
+      final nada = Pagamento.deMapa(pagamento([]));
+      expect(nada.recebidoCentavos, 0);
+      expect(nada.faltaCentavos, 10000);
+
+      // Cinquenta e cinquenta: a mesma parte duas vezes.
+      final metade = Pagamento.deMapa(pagamento([5000]));
+      expect(metade.faltaCentavos, 5000);
+      final tudo = Pagamento.deMapa(pagamento([5000, 5000]));
+      expect(tudo.faltaCentavos, 0);
+    });
+
+    test('sem as partes na consulta, falta o total', () {
+      final p = Pagamento.deMapa({
+        'id': 'p1',
+        'method': 'pix',
+        'timing': 'on_delivery',
+        'status': 'pending',
+        'amount_cents': 2790,
+      });
+      expect(p.faltaCentavos, 2790);
+    });
   });
 }

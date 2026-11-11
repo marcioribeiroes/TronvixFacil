@@ -304,7 +304,7 @@ class _InicioDoRestauranteState extends State<InicioDoRestaurante> {
                   Expanded(
                     child: Text(
                       p.pagamento?.aReceber == true
-                          ? 'Receber ${emReais(p.totalCentavos)} ${p.tipo == TipoDeEntrega.mesa ? 'na mesa' : p.tipo == TipoDeEntrega.retirada ? 'no balcão' : 'na entrega'}'
+                          ? 'Receber ${emReais(p.pagamento!.faltaCentavos)} ${p.tipo == TipoDeEntrega.mesa ? 'na mesa' : p.tipo == TipoDeEntrega.retirada ? 'no balcão' : 'na entrega'}'
                           : p.pagamento?.momento == MomentoDoPagamento.naEntrega
                               ? 'Recebido · ${emReais(p.totalCentavos)}'
                               : 'Pago · ${emReais(p.totalCentavos)}',

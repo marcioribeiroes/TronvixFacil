@@ -86,7 +86,10 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
             title: Text(p.pagamento?.forma.rotulo ?? 'Pagamento'),
             subtitle: Text(
               p.pagamento?.aReceber == true
-                  ? 'Receber na entrega'
+                  ? (p.pagamento!.recebidoCentavos > 0
+                      ? 'Já recebido ${emReais(p.pagamento!.recebidoCentavos)} · '
+                          'falta ${emReais(p.pagamento!.faltaCentavos)}'
+                      : 'Receber na entrega')
                   : p.pagamento?.momento == MomentoDoPagamento.naEntrega
                       ? 'Recebido'
                       : 'Pago pelo aplicativo',
@@ -113,7 +116,7 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: FilledButton.tonal(
                 onPressed: _ocupado ? null : _receber,
-                child: Text('Receber ${emReais(p.totalCentavos)}'),
+                child: Text('Receber ${emReais(p.pagamento!.faltaCentavos)}'),
               ),
             ),
           if (p.observacao != null && p.observacao!.isNotEmpty)
@@ -263,7 +266,8 @@ class _TelaPedidoDoBalcaoState extends State<TelaPedidoDoBalcao> {
       context,
       pedidoId: _pedido.id,
       numero: _pedido.numero,
-      totalCentavos: _pedido.totalCentavos,
+      faltaCentavos: _pedido.pagamento?.faltaCentavos ?? _pedido.totalCentavos,
+      recebidoCentavos: _pedido.pagamento?.recebidoCentavos ?? 0,
       formaPedida: _pedido.pagamento?.forma,
     );
     if (!mounted) return;

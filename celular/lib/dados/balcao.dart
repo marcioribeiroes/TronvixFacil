@@ -11,7 +11,7 @@ import 'supabase.dart';
 const _pedidoDoBalcao = '''
   *,
   order_items(*, order_item_addons(*)),
-  payments(*),
+  payments(*, payment_receipts(amount_cents)),
   deliveries(*)
 ''';
 
@@ -125,6 +125,29 @@ class Balcao {
           params: {'p_pedido': pedidoId, 'p_forma': forma.noBanco},
         ),
       );
+
+  /// Uma parte da conta: a mesa que divide, cada um pagando a sua.
+  ///
+  /// Pode repetir a mesma parte — cinquenta e cinquenta em dinheiro são dois
+  /// recebimentos, não um duplicado. O banco (`receber_parte`) não deixa
+  /// passar do que falta e marca o pedido como pago quando as partes fecham o
+  /// total. Devolve quanto ainda falta.
+  static Future<int> receberParte(
+    String pedidoId,
+    FormaDePagamento forma,
+    int valorCentavos,
+  ) =>
+      executar(() async {
+        final falta = await banco.rpc(
+          'receber_parte',
+          params: {
+            'p_pedido': pedidoId,
+            'p_forma': forma.noBanco,
+            'p_valor_cents': valorCentavos,
+          },
+        );
+        return (falta as num).toInt();
+      });
 
   static Future<void> recusar(String pedidoId, String motivo) =>
       executar(() => banco.from('orders').update({

@@ -631,6 +631,7 @@ class Pagamento {
     this.trocoParaCentavos,
     this.pixQrCode,
     this.pagoEm,
+    this.recebidoCentavos = 0,
   });
 
   final String id;
@@ -641,6 +642,10 @@ class Pagamento {
   final int? trocoParaCentavos;
   final String? pixQrCode;
   final DateTime? pagoEm;
+
+  /// O que já entrou em partes: a mesa que divide a conta. Só vem quando a
+  /// consulta pede `payment_receipts` (a do balcão); fora dela, fica zero.
+  final int recebidoCentavos;
 
   factory Pagamento.deMapa(Map<String, dynamic> m) => Pagamento(
         id: m['id'] as String,
@@ -653,7 +658,12 @@ class Pagamento {
             : _centavos(m['change_for_cents']),
         pixQrCode: m['pix_qr_code'] as String?,
         pagoEm: _quando(m['paid_at']),
+        recebidoCentavos: ((m['payment_receipts'] as List?) ?? const [])
+            .fold<int>(0, (s, r) => s + _centavos((r as Map)['amount_cents'])),
       );
+
+  /// O que ainda falta receber: o total menos as partes que já entraram.
+  int get faltaCentavos => valorCentavos - recebidoCentavos;
 
   int get trocoCentavos =>
       trocoParaCentavos == null ? 0 : trocoParaCentavos! - valorCentavos;

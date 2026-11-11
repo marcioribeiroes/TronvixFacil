@@ -50,6 +50,21 @@ int? paraCentavos(String entrada) {
   return int.parse(inteiro) * 100 + int.parse(decimal.padRight(2, '0'));
 }
 
+/// O que está errado no valor de uma parte recebida, ou null se está certo.
+///
+/// A mesa que divide a conta paga em partes: cada uma tem de ser mais que zero
+/// e não pode passar do que ainda falta. Troco não é parte da conta — quem dá
+/// cem para pagar oitenta pagou oitenta.
+String? erroDaParte(int? valorCentavos, int faltaCentavos) {
+  if (valorCentavos == null || valorCentavos <= 0) {
+    return 'Diga quanto o cliente pagou.';
+  }
+  if (valorCentavos > faltaCentavos) {
+    return 'Falta receber só ${emReais(faltaCentavos)}.';
+  }
+  return null;
+}
+
 /// Para rótulos curtos onde o "R$" já está claro pelo contexto.
 String emReaisCurto(int centavos) =>
     NumberFormat('#,##0.00', 'pt_BR').format(centavos / 100);

@@ -46,6 +46,9 @@ create policy "parte do pagamento segue a visibilidade do pedido"
   to authenticated
   using (app.can_see_order(order_id));
 
+-- So leitura: a escrita passa pela funcao, que roda como dona da tabela.
+grant select on payment_receipts to authenticated;
+
 -- -----------------------------------------------------------------------------
 -- Quanto ja entrou
 -- -----------------------------------------------------------------------------
