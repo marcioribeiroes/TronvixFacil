@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { Bike, Store, Trash2, UtensilsCrossed } from "lucide-react"
 
+import {
+  EscolherCliente,
+  type ClienteCadastrado,
+} from "@/components/painel/escolher-cliente"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,6 +17,7 @@ import {
   type Secao,
 } from "@/components/pedido/cardapio-para-escolher"
 import { formatarReais, paraCentavos } from "@/lib/dinheiro"
+import { formatarTelefone } from "@/lib/telefone"
 import {
   FORMAS_DE_PAGAMENTO,
   ROTULO_DA_FORMA,
@@ -41,10 +46,13 @@ export function LancarPedido({
   grupos,
   mesas,
   frete,
+  clientes,
 }: {
   secoes: Secao[]
   grupos: Grupo[]
   mesas: { id: string; rotulo: string }[]
+  /** O caderno de clientes da loja (tela Clientes), para escolher quem pediu. */
+  clientes: ClienteCadastrado[]
   /** Regra de frete da loja, para a prévia. */
   frete: { centavos: number; gratisAcimaDe: number | null }
 }) {
@@ -53,6 +61,7 @@ export function LancarPedido({
   const [erro, setErro] = useState<string | null>(null)
 
   const [tipo, setTipo] = useState<Tipo>("pickup")
+  const [clienteEscolhido, setClienteEscolhido] = useState<ClienteCadastrado | null>(null)
   const [cliente, setCliente] = useState("")
   const [telefone, setTelefone] = useState("")
   const [mesaId, setMesaId] = useState(mesas[0]?.id ?? "")
@@ -70,6 +79,33 @@ export function LancarPedido({
   const [receberAgora, setReceberAgora] = useState(false)
   const [observacao, setObservacao] = useState("")
   const [itens, setItens] = useState<(Escolha & { chave: number })[]>([])
+
+  /**
+   * Preenche o pedido com a ficha do cliente. So o que a ficha tem: campo que
+   * ela deixa em branco fica como estava, e tudo continua editavel - hoje ele
+   * pode pedir para outro endereco.
+   */
+  function escolherCliente(c: ClienteCadastrado) {
+    setClienteEscolhido(c)
+    setCliente(c.nome)
+    if (c.telefone) setTelefone(formatarTelefone(c.telefone))
+    setEndereco((atual) => ({
+      ...atual,
+      rua: c.rua ?? atual.rua,
+      numero: c.numero ?? atual.numero,
+      complemento: c.complemento ?? atual.complemento,
+      bairro: c.bairro ?? atual.bairro,
+      cidade: c.cidade ?? atual.cidade,
+    }))
+  }
+
+  /** Trocar de cliente limpa o que veio da ficha, para nao misturar dois. */
+  function limparCliente() {
+    setClienteEscolhido(null)
+    setCliente("")
+    setTelefone("")
+    setEndereco({ rua: "", numero: "", complemento: "", bairro: "", cidade: "", cep: "" })
+  }
 
   const subtotal = itens.reduce((s, i) => s + i.totalCentavos, 0)
   const freteAgora =
@@ -141,6 +177,13 @@ export function LancarPedido({
             </button>
           ))}
         </div>
+
+        <EscolherCliente
+          clientes={clientes}
+          escolhido={clienteEscolhido}
+          aoEscolher={escolherCliente}
+          aoLimpar={limparCliente}
+        />
 
         <div className="grid grid-cols-2 gap-3 rounded-xl border bg-card p-4">
           <label className="text-sm">

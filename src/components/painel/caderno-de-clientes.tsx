@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 import { Pencil, Plus, Search, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatarReais } from "@/lib/dinheiro"
 import { formatarTelefone } from "@/lib/telefone"
+import { clienteCombina } from "@/modules/clientes/busca"
 import { enderecoEmUmaLinha, type FichaDigitada } from "@/modules/clientes/ficha"
 import { removerCliente, salvarCliente } from "@/modules/painel/clientes"
 
@@ -50,11 +51,6 @@ function fichaDe(c: ClienteDoCaderno): FichaDigitada {
   }
 }
 
-/** Sem acento e sem maiuscula: "joao" acha "João". */
-function paraBusca(texto: string) {
-  return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase()
-}
-
 /**
  * O caderno de clientes da loja.
  *
@@ -70,16 +66,18 @@ export function CadernoDeClientes({ clientes }: { clientes: ClienteDoCaderno[] }
   const [editando, setEditando] = useState<string | null>(null)
   const [ficha, setFicha] = useState<FichaDigitada>(FICHA_VAZIA)
   const [tirando, setTirando] = useState<string | null>(null)
+  const formulario = useRef<HTMLFormElement>(null)
 
-  const termo = paraBusca(busca.trim())
-  const digitos = busca.replace(/\D/g, "")
-  const filtrados = termo
-    ? clientes.filter(
-        (c) =>
-          paraBusca(c.nome).includes(termo) ||
-          (digitos.length >= 3 && (c.telefone ?? "").includes(digitos)),
-      )
-    : clientes
+  // A ficha abre em cima da lista. Editar o cliente la de baixo, sem isto,
+  // parecia nao fazer nada: a ficha abria fora da tela.
+  useEffect(() => {
+    if (editando !== null) {
+      formulario.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      formulario.current?.querySelector("input")?.focus({ preventScroll: true })
+    }
+  }, [editando])
+
+  const filtrados = clientes.filter((c) => clienteCombina(c, busca))
 
   function abrir(qual: string, inicial: FichaDigitada) {
     setErro(null)
@@ -152,14 +150,15 @@ export function CadernoDeClientes({ clientes }: { clientes: ClienteDoCaderno[] }
 
       {editando !== null ? (
         <form
-          className="grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2"
+          ref={formulario}
+          className="grid scroll-mt-24 gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault()
             salvar()
           }}
         >
           <p className="font-semibold sm:col-span-2">
-            {editando === "novo" ? "Novo cliente" : "Corrigir cliente"}
+            {editando === "novo" ? "Novo cliente" : "Editar cliente"}
           </p>
           {campo("Nome", "nome", { placeholder: "Seu João" })}
           {campo("Telefone", "telefone", { placeholder: "(62) 99999-0000", inputMode: "tel" })}
@@ -271,12 +270,13 @@ export function CadernoDeClientes({ clientes }: { clientes: ClienteDoCaderno[] }
                 <span className="flex shrink-0 gap-1">
                   <Button
                     size="sm"
-                    variant="ghost"
-                    aria-label={`Corrigir ${c.nome}`}
+                    variant="outline"
+                    aria-label={`Editar ${c.nome}`}
                     onClick={() => abrir(c.id, fichaDe(c))}
                     disabled={enviando}
                   >
                     <Pencil className="size-4" aria-hidden="true" />
+                    Editar
                   </Button>
                   <Button
                     size="sm"
